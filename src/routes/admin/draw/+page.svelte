@@ -6,6 +6,7 @@
 	import AdminLayout from '$lib/components/admin/admin-layout.svelte';
 	import SpinningWheel from '$lib/components/admin/spinning-wheel.svelte';
 	import { mapWalletsToAnimals, type AnimalMapping } from '$lib/utils/animal-mapping';
+	import { onMount } from 'svelte';
 	
 	export let data;
 	const { user } = data;
@@ -13,18 +14,21 @@
 	const tokenDisplay = getTokenDisplay();
 	
 	// Draw state
-	let currentRound = 0;
+	let currentDraw: any = null;
 	let distributionAmount = 100; // From previous page or API
 	let roundStatus = 'not_started'; // not_started, active, completed
 	let currentSpin = 0;
 	let maxSpins = 7;
 	
-	// Mock candidates (will come from Helius API)
+	// Database-backed data
 	let currentCandidates: string[] = [];
-	let selectedWinners: { address: string; animal: string }[] = [];
+	let selectedWinners: { address: string; animal: string; id?: string }[] = [];
 	let isSpinning = false;
 	let currentWinnerAnimal = '';
 	let animalMappings: AnimalMapping[] = [];
+	let allHolders: string[] = [];
+	let isLoading = false;
+	let error = '';
 	
 	// Mock eligible holders
 	const mockHolders = [
@@ -41,21 +45,155 @@
 		'8H5jKp7nQ9rB4vA6mS2eW1xY',
 		'7J3gHl6kP2nQ8rB5vA9mS4eW'
 	];
-	
-	function startNewRound() {
-		currentRound = Date.now();
-		roundStatus = 'active';
-		currentSpin = 0;
-		selectedWinners = [];
-		generateCandidates();
+
+	// Load current draw status on mount
+	onMount(async () => {
+		await loadCurrentDraw();
+	});
+
+	async function loadCurrentDraw() {
+		try {
+			isLoading = true;
+			const response = await fetch('/api/draws?action=current');
+			const result = await response.json();
+			
+			if (result.draw) {
+				currentDraw = result.draw;
+				roundStatus = currentDraw.status === 'active' ? 'active' : 'not_started';
+				// Load participants and winners if draw is active
+				if (currentDraw.status === 'active') {
+					await loadDrawData();
+				}
+			}
+		} catch (err) {
+			console.error('Error loading current draw:', err);
+			error = 'Failed to load current draw';
+		} finally {
+			isLoading = false;
+		}
+	}
+
+	async function loadDrawData() {
+		if (!currentDraw) return;
+		
+		try {
+			// Load participants and winners for the current draw
+			const dashboardResponse = await fetch('/api/draws?action=dashboard');
+			const dashboardData = await dashboardResponse.json();
+			
+			if (dashboardData.participants) {
+				currentCandidates = dashboardData.participants.map((p: any) => p.walletAddress);
+				animalMappings = dashboardData.participants.map((p: any) => ({
+					walletAddress: p.walletAddress,
+					animal: {
+						name: p.animalName,
+						emoji: p.animalEmoji,
+						description: `${p.animalName} participant`
+					}
+				}));
+			}
+			
+			if (dashboardData.latestWinners) {
+				selectedWinners = dashboardData.latestWinners
+					.filter((w: any) => w.drawNumber === currentDraw.drawNumber)
+					.map((w: any) => ({
+						address: w.walletAddress,
+						animal: `${w.participant?.animalEmoji} ${w.participant?.animalName}`,
+						id: w.id
+					}));
+				currentSpin = selectedWinners.length;
+			}
+		} catch (err) {
+			console.error('Error loading draw data:', err);
+		}
 	}
 	
-	function generateCandidates() {
-		// Simulate fetching 7 random candidates from Helius API
-		const shuffled = [...mockHolders].sort(() => 0.5 - Math.random());
-		currentCandidates = shuffled.slice(0, 7);
-		// Update animal mappings
-		animalMappings = mapWalletsToAnimals(currentCandidates);
+	async function startNewRound() {
+		try {
+			isLoading = true;
+			error = '';
+
+			// Create new draw in database
+			const createResponse = await fetch('/api/draws', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'create',
+					data: { scheduledAt: new Date().toISOString() }
+				})
+			});
+
+			if (!createResponse.ok) {
+				throw new Error('Failed to create draw');
+			}
+
+			const createResult = await createResponse.json();
+			currentDraw = createResult.draw;
+
+			// Start the draw
+			const startResponse = await fetch('/api/draws', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					action: 'start',
+					data: { drawId: currentDraw.id }
+				})
+			});
+
+			if (!startResponse.ok) {
+				throw new Error('Failed to start draw');
+			}
+
+			currentDraw = (await startResponse.json()).draw;
+			roundStatus = 'active';
+			currentSpin = 0;
+			selectedWinners = [];
+			
+			// Generate candidates and add to database
+			await generateCandidates();
+		} catch (err) {
+			console.error('Error starting new round:', err);
+			error = 'Failed to start new round';
+		} finally {
+			isLoading = false;
+		}
+	}
+	
+	async function generateCandidates() {
+		try {
+			// TODO: Replace with actual Helius API call when ready
+			// For now, use mock data and exclude previous winners
+			const availableHolders = mockHolders.filter(
+				holder => !selectedWinners.some(winner => winner.address === holder)
+			);
+			
+			const shuffled = [...availableHolders].sort(() => 0.5 - Math.random());
+			currentCandidates = shuffled.slice(0, 7);
+			
+			// Update animal mappings
+			animalMappings = mapWalletsToAnimals(currentCandidates);
+			
+			// Save participants to database if we have a current draw
+			if (currentDraw) {
+				const response = await fetch('/api/draws', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'add_participants',
+						data: {
+							drawId: currentDraw.id,
+							participants: animalMappings
+						}
+					})
+				});
+				
+				if (!response.ok) {
+					console.error('Failed to save participants to database');
+				}
+			}
+		} catch (err) {
+			console.error('Error generating candidates:', err);
+		}
 	}
 	
 	function onSpinStart() {
@@ -63,18 +201,59 @@
 		currentWinnerAnimal = '';
 	}
 	
-	function onSpinComplete(winner: string, animal: string) {
-		selectedWinners = [...selectedWinners, { address: winner, animal }];
-		currentWinnerAnimal = animal;
-		currentSpin++;
-		
-		if (currentSpin >= maxSpins) {
-			roundStatus = 'completed';
-		} else {
-			// Generate new candidates for next spin (excluding previous winners)
-			setTimeout(() => {
-				generateCandidates();
-			}, 3000); // Give more time to celebrate
+	async function onSpinComplete(winner: string, animal: string) {
+		try {
+			selectedWinners = [...selectedWinners, { address: winner, animal }];
+			currentWinnerAnimal = animal;
+			currentSpin++;
+			
+			// Save winner to database
+			if (currentDraw) {
+				const winnerData = {
+					participantId: '', // Will be resolved by the API
+					walletAddress: winner,
+					prizeAmount: (distributionAmount * 0.5 / 7).toString(),
+					position: currentSpin
+				};
+				
+				const response = await fetch('/api/draws', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						action: 'record_winners',
+						data: {
+							drawId: currentDraw.id,
+							winners: [winnerData]
+						}
+					})
+				});
+				
+				if (!response.ok) {
+					console.error('Failed to save winner to database');
+				}
+			}
+			
+			if (currentSpin >= maxSpins) {
+				roundStatus = 'completed';
+				// Complete the draw in database
+				if (currentDraw) {
+					await fetch('/api/draws', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							action: 'complete',
+							data: { drawId: currentDraw.id }
+						})
+					});
+				}
+			} else {
+				// Generate new candidates for next spin (excluding previous winners)
+				setTimeout(() => {
+					generateCandidates();
+				}, 3000); // Give more time to celebrate
+			}
+		} catch (err) {
+			console.error('Error completing spin:', err);
 		}
 	}
 	
@@ -101,7 +280,7 @@
 			<div class="text-center mb-8">
 				<h1 class="text-3xl font-bold text-gray-900 mb-2">
 					<Icon icon="mdi:dice-6" class="inline w-8 h-8 text-orange-600 mr-2" />
-					🎯 LIVE DRAW - Round #{currentRound}
+					🎯 LIVE DRAW - Round #{currentDraw?.drawNumber || 'Unknown'}
 				</h1>
 				<p class="text-lg text-gray-600 mb-4">
 					Spin {currentSpin + 1} of {maxSpins} - Who will be our next lucky winner?
@@ -256,7 +435,7 @@
 							<div>
 								<CardTitle class="flex items-center gap-2">
 									<Icon icon="mdi:dice-6" class="w-5 h-5 text-orange-600" />
-									Live Draw - Round #{currentRound || 'Not Started'}
+									Live Draw - Round #{currentDraw?.drawNumber || 'Not Started'}
 								</CardTitle>
 								<CardDescription>
 									{#if roundStatus === 'not_started'}
@@ -285,9 +464,19 @@
 								<p class="text-gray-600 mb-6">
 									Click below to begin a new lottery round with {distributionAmount} SOL
 								</p>
-								<Button on:click={startNewRound} class="px-8 py-3">
-									<Icon icon="mdi:play" class="mr-2 h-5 w-5" />
-									Start New Round
+								{#if error}
+									<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+										<p class="text-red-600 text-sm">{error}</p>
+									</div>
+								{/if}
+								<Button on:click={startNewRound} disabled={isLoading} class="px-8 py-3">
+									{#if isLoading}
+										<Icon icon="mdi:loading" class="mr-2 h-5 w-5 animate-spin" />
+										Creating Draw...
+									{:else}
+										<Icon icon="mdi:play" class="mr-2 h-5 w-5" />
+										Start New Round
+									{/if}
 								</Button>
 							</div>
 						{:else}
