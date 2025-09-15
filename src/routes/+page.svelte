@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
 	import Icon from '@iconify/svelte';
-	import { getTokenDisplay, getLotteryDescription, getDistributionText, getJupiterUrl } from '$lib/config/token';
+	import { getTokenDisplay, getLotteryDescription, getDistributionText } from '$lib/config/client';
 	
-	// Cache the config values to avoid repeated function calls
+	// Use client-safe defaults 
 	const tokenDisplay = getTokenDisplay();
 	const distributionText = getDistributionText();
-	const jupiterUrl = getJupiterUrl();
+	const lotteryDescription = getLotteryDescription();
+	// Jupiter URL placeholder for now
+	const jupiterUrl = `https://jup.ag/swap/SOL-RUNNER`;
 </script>
 
 <svelte:head>

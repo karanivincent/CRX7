@@ -7,5 +7,10 @@ export default defineConfig({
 		include: ['src/**/*.{test,spec}.{js,ts}', 'tests/**/*.{test,spec}.{js,ts}'],
 		environment: 'jsdom',
 		globals: true
+	},
+	server: {
+		hmr: {
+			overlay: false
+		}
 	}
 });

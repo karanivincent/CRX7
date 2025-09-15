@@ -4,12 +4,15 @@ import { profileTable } from "$lib/db/schema.js";
 import { error } from "@sveltejs/kit";
 import { eq } from "drizzle-orm";
 import { zfd } from "zod-form-data";
+import { getClientConfig } from "$lib/config/token";
 
 export const load = async ({ locals }) => {
   const userProfile = await getOrCreateUserProfile(locals);
+  const tokenConfig = getClientConfig();
 
   return {
     userProfile,
+    tokenConfig,
   };
 };
 

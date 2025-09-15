@@ -2,7 +2,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import Icon from '@iconify/svelte';
-	import { getTokenDisplay } from '$lib/config/token';
+	import { getTokenDisplay } from '$lib/config/client';
 	
 	// Cache the config values
 	const tokenDisplay = getTokenDisplay();

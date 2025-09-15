@@ -52,7 +52,7 @@
 					<Button href="/admin" variant="outline" size="sm">Admin</Button>
 					<Button href="/auth/logout" variant="ghost" size="sm">Logout</Button>
 				{:else}
-					<Button href="/login" size="sm">Admin Login</Button>
+					<Button href="/auth/login" size="sm">Admin Login</Button>
 				{/if}
 			</div>
 		</div>
@@ -72,8 +72,8 @@
 </div>
 
 <style>
-	html,
-	body {
+	:global(html),
+	:global(body) {
 		height: 100%;
 		margin: 0;
 		padding: 0;

@@ -61,22 +61,32 @@ export const tokenConfig: TokenConfig = {
 	jupiterSwapUrl: `https://jup.ag/swap/SOL-${TOKEN_MINT_ADDRESS}`
 };
 
-// Helper functions for common use cases
+// Helper functions for common use cases (server-only)
 export const getTokenDisplay = () => tokenConfig.displayName;
 export const getTokenName = () => tokenConfig.name;
 export const getTokenSymbol = () => tokenConfig.symbol;
 export const getMintAddress = () => tokenConfig.mintAddress;
 export const getJupiterUrl = () => tokenConfig.jupiterSwapUrl;
 
-// Distribution helpers
+// Distribution helpers (server-only)
 export const getDistributionText = () => {
 	const { winnersPercentage, holdingPercentage, charityPercentage } = tokenConfig.distribution;
 	return `${winnersPercentage}% to winners • ${holdingPercentage}% to future rounds • ${charityPercentage}% to charity`;
 };
 
-// Lottery helpers
+// Lottery helpers (server-only)
 export const getLotteryDescription = () => {
 	return `Every ${tokenConfig.drawFrequency}, ${tokenConfig.winnersPerDraw} ${tokenConfig.displayName} holders are randomly selected to win SOL rewards.`;
 };
+
+// Create client-safe config (no sensitive data)
+export const getClientConfig = () => ({
+	displayName: tokenConfig.displayName,
+	name: tokenConfig.name,
+	symbol: tokenConfig.symbol,
+	winnersPerDraw: tokenConfig.winnersPerDraw,
+	drawFrequency: tokenConfig.drawFrequency,
+	distribution: tokenConfig.distribution
+});
 
 export default tokenConfig;

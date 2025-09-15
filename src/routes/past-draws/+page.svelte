@@ -28,7 +28,7 @@
 		<!-- Coming Soon Card -->
 		<div class="max-w-2xl mx-auto">
 			<Card class="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-white">
-				<CardHeader className="text-center pb-2">
+				<CardHeader class="text-center pb-2">
 					<div class="flex justify-center mb-4">
 						<Icon icon="mdi:history" class="h-16 w-16 text-orange-500 animate-spin-slow" />
 					</div>
