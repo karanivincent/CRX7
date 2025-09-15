@@ -1,18 +1,9 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "./schema";
-import { DATABASE_URL } from "$env/static/private";
+import { createClient } from '@supabase/supabase-js';
+import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-// Configure PostgreSQL client for Supabase pooler
-const client = postgres(DATABASE_URL, {
-  ssl: 'require',
-  connection: {
-    TimeZone: 'UTC',
-  },
-  max: 1, // Single connection to work with pooler
-  idle_timeout: 60, // Keep connections alive longer for pooler
-  connect_timeout: 30, // Longer timeout for pooler connections
-  prepare: false, // Disable prepared statements for pooler compatibility
-});
+// Use Supabase client for database operations
+export const supabase = createClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY);
 
-export const db = drizzle(client, { schema });
+// For now, we'll use Supabase client directly instead of Drizzle
+// This avoids the connection timeout issues with postgres.js
+export const db = supabase;
