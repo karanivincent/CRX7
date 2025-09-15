@@ -34,10 +34,11 @@
 		xlarge: 'w-96 h-96 md:w-[420px] md:h-[420px] lg:w-[480px] lg:h-[480px]'
 	};
 	
+	// Pointer sizes for different wheel sizes
 	const pointerSizes = {
-		normal: 'border-l-4 border-r-4 border-b-8',
-		large: 'border-l-6 border-r-6 border-b-12',
-		xlarge: 'border-l-8 border-r-8 border-b-16'
+		normal: { width: 20, height: 60, circle: 6 },
+		large: { width: 25, height: 80, circle: 8 },
+		xlarge: { width: 30, height: 100, circle: 10 }
 	};
 	
 	// Update animal mappings when candidates change
@@ -76,10 +77,21 @@
 		// Determine winner after spin completes
 		setTimeout(() => {
 			const segmentAngle = 360 / candidates.length;
-			const normalizedRotation = (360 - (rotation % 360) + 90) % 360; // Adjust for top pointer
-			const winnerIndex = Math.floor(normalizedRotation / segmentAngle);
+			
+			// Calculate which segment is at the top (12 o'clock position)
+			// The wheel rotates, so we need to find what segment ended up at the top
+			const currentRotation = rotation % 360;
+			
+			// Since segments start at -90 degrees (top), we need to account for that
+			// and find which segment is now at 0 degrees (12 o'clock)
+			let adjustedRotation = (360 - currentRotation) % 360;
+			
+			// Find which segment index corresponds to the top position
+			const winnerIndex = Math.floor(adjustedRotation / segmentAngle) % candidates.length;
 			const selectedWinner = candidates[winnerIndex] || candidates[0];
 			const selectedAnimal = getAnimalNameForCandidate(selectedWinner);
+			
+			console.log('Debug - Rotation:', rotation, 'Adjusted:', adjustedRotation, 'Winner Index:', winnerIndex, 'Winner:', selectedAnimal);
 			
 			winner = selectedWinner;
 			winnerAnimal = selectedAnimal;
@@ -95,6 +107,8 @@
 			wheelElement.style.transition = 'none';
 		}
 		rotation = 0;
+		winner = '';
+		winnerAnimal = '';
 	});
 	
 	$: segmentAngle = candidates.length > 0 ? 360 / candidates.length : 0;
@@ -103,10 +117,21 @@
 <div class="flex flex-col items-center space-y-8">
 	<!-- Wheel Container -->
 	<div class="relative">
-		<!-- Enhanced Pointer -->
-		<div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-3 z-20">
-			<div class="{pointerSizes[size]} border-l-transparent border-r-transparent border-b-orange-600 drop-shadow-lg"></div>
-			<div class="absolute top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-orange-600 rounded-full"></div>
+		<!-- Large Fixed Pointer at 12 o'clock (always visible, more prominent when winner selected) -->
+		<div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-4 z-30">
+			<!-- Large winning pointer triangle -->
+			<div class="w-0 h-0 
+						border-l-[{pointerSizes[size].width}px] border-r-[{pointerSizes[size].width}px] border-b-[{pointerSizes[size].height}px]
+						border-l-transparent border-r-transparent 
+						{winner && !isSpinning ? 'border-b-yellow-400 animate-pulse' : 'border-b-orange-600'} 
+						drop-shadow-lg">
+			</div>
+			<!-- Pointer base circle -->
+			<div class="absolute left-1/2 transform -translate-x-1/2 
+						w-{pointerSizes[size].circle} h-{pointerSizes[size].circle} rounded-full border-4 drop-shadow-lg
+						{winner && !isSpinning ? 'bg-yellow-400 border-yellow-500 animate-pulse' : 'bg-orange-600 border-orange-700'}"
+						style="top: {pointerSizes[size].height - 15}px;">
+			</div>
 		</div>
 		
 		<!-- Spinning Wheel -->
@@ -183,13 +208,6 @@
 				<span class="font-bold text-xl">🎲 Spinning the Wheel...</span>
 				<div class="text-sm text-gray-600">Finding our lucky winner!</div>
 			</div>
-		{:else if winner}
-			<div class="text-center p-6 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border-2 border-green-200 shadow-lg">
-				<div class="text-3xl mb-4">🎉</div>
-				<div class="text-2xl font-bold text-green-800 mb-3">{winnerAnimal} WINS!</div>
-				<div class="text-sm text-gray-600 mb-2">Winning Wallet:</div>
-				<div class="font-mono text-sm bg-white px-4 py-2 rounded-lg border shadow-sm">{winner}</div>
-			</div>
 		{:else}
 			<button
 				on:click={spinWheel}
@@ -204,7 +222,7 @@
 			</button>
 		{/if}
 		
-		{#if candidates.length > 0 && !isSpinning && !winner}
+		{#if candidates.length > 0 && !isSpinning}
 			<div class="text-gray-600">
 				<div class="font-medium">{candidates.length} crypto animals ready to compete!</div>
 				<div class="text-sm">May the luckiest hodler win 🚀</div>
