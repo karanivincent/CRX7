@@ -1,16 +1,17 @@
 import { redirect } from '@sveltejs/kit';
-import { getOrCreateUserProfile } from '$lib/auth';
 
 export const load = async ({ locals }) => {
-	const userProfile = await getOrCreateUserProfile(locals);
+	// Get session without requiring database for admin access
+	const { session, user } = await locals.safeGetSession();
 	
-	if (!userProfile) {
+	if (!user) {
 		redirect(302, '/auth/login');
 	}
 
 	// For now, any logged-in user can access admin
 	// Later we can add role-based access control
 	return {
-		userProfile
+		user,
+		session
 	};
 };

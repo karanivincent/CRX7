@@ -5,7 +5,7 @@
 	import { getTokenDisplay } from '$lib/config/client';
 	
 	export let data;
-	const { userProfile } = data;
+	const { user } = data;
 	
 	// Cache config values
 	const tokenDisplay = getTokenDisplay();
@@ -26,7 +26,7 @@
 				{tokenDisplay} <span class="text-orange-500">Admin</span> Dashboard 🎛️
 			</h1>
 			<p class="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
-				Welcome back, {userProfile.email || 'Admin'}! 
+				Welcome back, {user.email || 'Admin'}! 
 				Control the lottery, manage draws, and watch the magic happen 🪄
 			</p>
 		</div>
