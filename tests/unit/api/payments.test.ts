@@ -121,7 +121,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         {
@@ -140,7 +140,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         {
@@ -159,7 +159,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith({ winner: mockUpdatedWinner });
     });
@@ -172,7 +172,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         { error: 'Invalid action' },
@@ -191,7 +191,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         { error: 'Failed to process payment' },

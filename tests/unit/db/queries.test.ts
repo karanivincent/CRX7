@@ -67,8 +67,8 @@ const mockStats = [
   }
 ];
 
-// Mock the operations module
-vi.mock('../../../src/lib/db/operations', () => ({
+// Mock the supabase-operations module
+vi.mock('../../../src/lib/db/supabase-operations', () => ({
   createDraw: vi.fn().mockResolvedValue(mockDraw),
   getCurrentDraw: vi.fn().mockResolvedValue(mockDraw),
   getNextScheduledDraw: vi.fn().mockResolvedValue(mockDraw),
@@ -81,7 +81,6 @@ vi.mock('../../../src/lib/db/operations', () => ({
   addWinners: vi.fn().mockResolvedValue(mockWinners),
   getDrawWinners: vi.fn().mockResolvedValue(mockWinners),
   getLatestWinners: vi.fn().mockResolvedValue(mockWinners),
-  getDrawStats: vi.fn().mockResolvedValue(mockStats),
   getNextDrawNumber: vi.fn().mockResolvedValue(2),
   updateWinnerTransaction: vi.fn().mockResolvedValue(mockWinners[0])
 }));
@@ -103,7 +102,6 @@ const {
   getDrawParticipants,
   getDrawWinners,
   getLatestWinners,
-  getDrawStats,
   getNextDrawNumber
 } = await import('../../../src/lib/db/queries.js');
 
@@ -143,10 +141,6 @@ describe('Database Queries', () => {
       expect(result).toEqual(mockWinners);
     });
 
-    it('should get draw stats', async () => {
-      const result = await getDrawStats();
-      expect(result).toEqual(mockStats);
-    });
 
     it('should get next draw number', async () => {
       const result = await getNextDrawNumber();

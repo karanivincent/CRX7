@@ -135,7 +135,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith({ draw: mockDraw });
     });
@@ -148,7 +148,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith({ draw: mockDraw });
     });
@@ -161,7 +161,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith({ draw: mockDraw });
     });
@@ -181,7 +181,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith({ participants: mockParticipants });
     });
@@ -203,7 +203,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith({ winners: mockWinners });
     });
@@ -216,7 +216,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         { error: 'Invalid action' },
@@ -235,7 +235,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(mockRequest);
+      await POST({ request: mockRequest } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         { error: 'Failed to manage draw' },
