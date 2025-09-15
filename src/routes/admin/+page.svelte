@@ -5,24 +5,97 @@
 	import { getTokenDisplay } from '$lib/config/client';
 	import AdminLayout from '$lib/components/admin/admin-layout.svelte';
 	import StatsCard from '$lib/components/ui/stats-card.svelte';
+	import { onMount } from 'svelte';
 	
 	export let data;
-	const { user } = data;
+	const { user, vaultData: initialVaultData } = data;
 	
 	// Cache config values
 	const tokenDisplay = getTokenDisplay();
 	
-	// Vault and draw-specific data - will be replaced with real API data later
-	let vaultData = {
-		unclaimedBalance: { value: '127.5 SOL', loading: false, trend: 'up', trendValue: '+23.1 SOL' },
-		lastDistribution: { value: '89.3 SOL', loading: false, trend: 'neutral', trendValue: '3 days ago' },
-		pendingRounds: { value: '0', loading: false, trend: 'neutral', trendValue: 'No active rounds' },
-		nextScheduled: { value: 'Tomorrow 5PM', loading: false, trend: 'neutral', trendValue: 'UTC' }
-	};
+	// Real-time vault data
+	let vaultData = initialVaultData;
+	let vaultLoading = false;
+	let lastRefresh = vaultData?.lastUpdated ? new Date(vaultData.lastUpdated) : new Date();
 	
 	// Current draw amount input
 	let distributionAmount = '';
-	let recommendedAmount = 127.5; // Based on vault balance
+	let recommendedAmount = vaultData?.balance || 0;
+	
+	// Auto-refresh interval (30 seconds)
+	let refreshInterval: number;
+	
+	// Refresh vault balance from API
+	async function refreshVaultBalance(force = false) {
+		vaultLoading = true;
+		try {
+			const url = force ? '/api/vault/balance?refresh=true' : '/api/vault/balance';
+			const response = await fetch(url);
+			const result = await response.json();
+			
+			if (result.success && result.vault) {
+				vaultData = {
+					balance: result.vault.balance,
+					balanceFormatted: result.vault.balanceFormatted,
+					distribution: result.distribution,
+					winnerBreakdown: result.distribution.winners.breakdown,
+					lastUpdated: result.vault.lastUpdated,
+					address: result.vault.address,
+					breakdown: result.vault.breakdown || null
+				};
+				recommendedAmount = vaultData.balance;
+				lastRefresh = new Date(result.vault.lastUpdated);
+			} else {
+				console.error('Failed to refresh vault balance:', result.error);
+			}
+		} catch (error) {
+			console.error('Error refreshing vault balance:', error);
+		} finally {
+			vaultLoading = false;
+		}
+	}
+	
+	// Format time since last update
+	function getTimeSinceUpdate() {
+		const now = new Date();
+		const diff = now.getTime() - lastRefresh.getTime();
+		const seconds = Math.floor(diff / 1000);
+		const minutes = Math.floor(seconds / 60);
+		
+		if (minutes > 0) {
+			return `${minutes}m ago`;
+		} else {
+			return `${seconds}s ago`;
+		}
+	}
+	
+	// Set up auto-refresh
+	onMount(() => {
+		// Refresh every 30 seconds
+		refreshInterval = setInterval(() => {
+			refreshVaultBalance(false);
+		}, 30000);
+		
+		// Cleanup interval on destroy
+		return () => {
+			if (refreshInterval) {
+				clearInterval(refreshInterval);
+			}
+		};
+	});
+	
+	// Reactive vault stats for display
+	$: unclaimedBalance = vaultData ? {
+		value: vaultData.balanceFormatted,
+		loading: vaultLoading,
+		trend: 'neutral' as const,
+		trendValue: getTimeSinceUpdate()
+	} : {
+		value: 'Loading...',
+		loading: true,
+		trend: 'neutral' as const,
+		trendValue: 'Fetching data...'
+	};
 </script>
 
 <svelte:head>
@@ -34,40 +107,40 @@
 	<!-- Vault Status -->
 	<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
 		<StatsCard 
-			title="Unclaimed Vault" 
-			value={vaultData.unclaimedBalance.value}
+			title="Vault Balance" 
+			value={unclaimedBalance.value}
 			icon="mdi:safe" 
 			color="orange"
-			trend={vaultData.unclaimedBalance.trend}
-			trendValue={vaultData.unclaimedBalance.trendValue}
-			loading={vaultData.unclaimedBalance.loading}
+			trend={unclaimedBalance.trend}
+			trendValue={unclaimedBalance.trendValue}
+			loading={unclaimedBalance.loading}
 		/>
 		<StatsCard 
-			title="Last Distribution" 
-			value={vaultData.lastDistribution.value}
-			icon="mdi:cash-multiple" 
+			title="Winners Share" 
+			value={vaultData?.distribution?.winners?.formatted || 'Loading...'}
+			icon="mdi:trophy" 
 			color="green"
-			trend={vaultData.lastDistribution.trend}
-			trendValue={vaultData.lastDistribution.trendValue}
-			loading={vaultData.lastDistribution.loading}
+			trend="neutral"
+			trendValue="50% of vault"
+			loading={vaultLoading}
 		/>
 		<StatsCard 
-			title="Pending Rounds" 
-			value={vaultData.pendingRounds.value}
-			icon="mdi:clock-outline" 
+			title="Holding Share" 
+			value={vaultData?.distribution?.holding?.formatted || 'Loading...'}
+			icon="mdi:bank" 
 			color="blue"
-			trend={vaultData.pendingRounds.trend}
-			trendValue={vaultData.pendingRounds.trendValue}
-			loading={vaultData.pendingRounds.loading}
+			trend="neutral"
+			trendValue="40% of vault"
+			loading={vaultLoading}
 		/>
 		<StatsCard 
-			title="Next Scheduled" 
-			value={vaultData.nextScheduled.value}
-			icon="mdi:calendar-clock" 
+			title="Charity Share" 
+			value={vaultData?.distribution?.charity?.formatted || 'Loading...'}
+			icon="mdi:heart" 
 			color="purple"
-			trend={vaultData.nextScheduled.trend}
-			trendValue={vaultData.nextScheduled.trendValue}
-			loading={vaultData.nextScheduled.loading}
+			trend="neutral"
+			trendValue="10% of vault"
+			loading={vaultLoading}
 		/>
 	</div>
 
@@ -82,36 +155,88 @@
 							<Icon icon="mdi:safe" class="w-5 h-5 text-orange-600" />
 						</div>
 						<div>
-							<CardTitle class="text-lg">Pump.fun Vault</CardTitle>
-							<CardDescription>Current unclaimed balance</CardDescription>
+							<CardTitle class="text-lg">Reward Vault</CardTitle>
+							<CardDescription>Live SOL balance for distribution</CardDescription>
 						</div>
 					</div>
-					<Button variant="outline" size="sm">
-						<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
+					<Button 
+						variant="outline" 
+						size="sm" 
+						on:click={() => refreshVaultBalance(true)}
+						disabled={vaultLoading}
+					>
+						<Icon 
+							icon="mdi:refresh" 
+							class="w-4 h-4 mr-2 {vaultLoading ? 'animate-spin' : ''}" 
+						/>
 						Refresh
 					</Button>
 				</div>
 			</CardHeader>
 			<CardContent class="space-y-4">
 				<div class="text-center p-4 bg-orange-50 rounded-lg">
-					<div class="text-3xl font-bold text-orange-600 mb-1">127.5 SOL</div>
-					<div class="text-sm text-gray-600">Available for distribution</div>
+					{#if vaultData}
+						<div class="text-3xl font-bold text-orange-600 mb-1">
+							{vaultData.balanceFormatted}
+						</div>
+						<div class="text-sm text-gray-600">Available for distribution</div>
+						
+						{#if vaultData.breakdown}
+							<div class="mt-2 pt-2 border-t border-orange-200">
+								<div class="grid grid-cols-2 gap-4 text-xs">
+									<div>
+										<div class="font-medium text-gray-700">SOL</div>
+										<div class="text-orange-600">{vaultData.breakdown.solFormatted}</div>
+									</div>
+									<div>
+										<div class="font-medium text-gray-700">WSOL</div>
+										<div class="text-orange-600">{vaultData.breakdown.wsolFormatted}</div>
+									</div>
+								</div>
+							</div>
+						{/if}
+						
+						<div class="text-xs text-gray-400 mt-1">
+							Updated {getTimeSinceUpdate()}
+						</div>
+					{:else}
+						<div class="text-3xl font-bold text-gray-400 mb-1">Loading...</div>
+						<div class="text-sm text-gray-600">Fetching vault balance</div>
+					{/if}
 				</div>
-				<div class="space-y-2">
-					<label class="text-sm font-medium text-gray-700">Distribution Amount (SOL)</label>
-					<div class="flex gap-2">
-						<input 
-							type="number" 
-							bind:value={distributionAmount}
-							placeholder="{recommendedAmount}"
-							class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
-						/>
-						<Button variant="outline" size="sm" on:click={() => distributionAmount = recommendedAmount.toString()}>
-							Max
-						</Button>
+				
+				{#if vaultData && vaultData.balance > 0}
+					<div class="space-y-2">
+						<label class="text-sm font-medium text-gray-700">Distribution Amount (SOL)</label>
+						<div class="flex gap-2">
+							<input 
+								type="number" 
+								bind:value={distributionAmount}
+								placeholder="{recommendedAmount.toFixed(2)}"
+								step="0.01"
+								min="0"
+								max="{recommendedAmount}"
+								class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+							/>
+							<Button 
+								variant="outline" 
+								size="sm" 
+								on:click={() => distributionAmount = recommendedAmount.toFixed(2)}
+							>
+								Max
+							</Button>
+						</div>
+						<div class="text-xs text-gray-500">
+							Maximum: {recommendedAmount.toFixed(2)} SOL
+						</div>
 					</div>
-					<div class="text-xs text-gray-500">Recommended: {recommendedAmount} SOL</div>
-				</div>
+				{:else if vaultData && vaultData.balance === 0}
+					<div class="text-center p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+						<div class="text-sm text-yellow-700">
+							Vault is empty. Add SOL to start distributions.
+						</div>
+					</div>
+				{/if}
 			</CardContent>
 		</Card>
 		
@@ -151,30 +276,49 @@
 			<CardDescription>See how SOL will be distributed based on your input</CardDescription>
 		</CardHeader>
 		<CardContent>
-			{#if distributionAmount}
+			{#if distributionAmount && Number(distributionAmount) > 0}
+				{@const amount = Number(distributionAmount)}
+				{@const winnersTotal = amount * 0.5}
+				{@const holdingTotal = amount * 0.4}
+				{@const charityTotal = amount * 0.1}
+				{@const perWinner = winnersTotal / 7}
+				
 				<div class="space-y-4">
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 						<!-- Winners 50% -->
 						<div class="text-center p-4 bg-orange-50 rounded-lg">
-							<div class="text-lg font-bold text-orange-600">{(Number(distributionAmount) * 0.5).toFixed(2)} SOL</div>
+							<div class="text-lg font-bold text-orange-600">{winnersTotal.toFixed(2)} SOL</div>
 							<div class="text-sm text-gray-600">Winners (50%)</div>
-							<div class="text-xs text-gray-500">{(Number(distributionAmount) * 0.5 / 7).toFixed(3)} SOL each</div>
+							<div class="text-xs text-gray-500">{perWinner.toFixed(3)} SOL each (7 winners)</div>
 						</div>
 						<!-- Holding 40% -->
 						<div class="text-center p-4 bg-blue-50 rounded-lg">
-							<div class="text-lg font-bold text-blue-600">{(Number(distributionAmount) * 0.4).toFixed(2)} SOL</div>
+							<div class="text-lg font-bold text-blue-600">{holdingTotal.toFixed(2)} SOL</div>
 							<div class="text-sm text-gray-600">Holding (40%)</div>
-							<div class="text-xs text-gray-500">Future operations</div>
+							<div class="text-xs text-gray-500">Future rounds</div>
 						</div>
 						<!-- Charity 10% -->
 						<div class="text-center p-4 bg-green-50 rounded-lg">
-							<div class="text-lg font-bold text-green-600">{(Number(distributionAmount) * 0.1).toFixed(2)} SOL</div>
+							<div class="text-lg font-bold text-green-600">{charityTotal.toFixed(2)} SOL</div>
 							<div class="text-sm text-gray-600">Charity (10%)</div>
 							<div class="text-xs text-gray-500">Good cause</div>
 						</div>
 					</div>
+					
+					{#if vaultData && amount > vaultData.balance}
+						<div class="p-3 bg-red-50 rounded-lg border border-red-200">
+							<div class="text-sm text-red-700">
+								⚠️ Distribution amount ({amount.toFixed(2)} SOL) exceeds vault balance ({vaultData.balanceFormatted})
+							</div>
+						</div>
+					{/if}
+					
 					<div class="flex gap-3 pt-4 border-t">
-						<Button href="/admin/draw" class="flex-1">
+						<Button 
+							href="/admin/draw" 
+							class="flex-1"
+							disabled={vaultData && amount > vaultData.balance}
+						>
 							<Icon icon="mdi:play" class="mr-2 h-4 w-4" />
 							Start Round with {distributionAmount} SOL
 						</Button>
@@ -184,31 +328,42 @@
 						</Button>
 					</div>
 				</div>
-			{:else}
+			{:else if vaultData && vaultData.balance > 0}
 				<div class="text-center py-8 text-gray-500">
 					<Icon icon="mdi:calculator" class="w-12 h-12 mx-auto mb-2 text-gray-300" />
 					<p>Enter a distribution amount above to see the breakdown</p>
+					<p class="text-xs mt-2">Available: {vaultData.balanceFormatted}</p>
+				</div>
+			{:else}
+				<div class="text-center py-8 text-gray-500">
+					<Icon icon="mdi:safe" class="w-12 h-12 mx-auto mb-2 text-gray-300" />
+					<p>Vault balance loading or empty</p>
+					<p class="text-xs mt-2">Cannot calculate distribution</p>
 				</div>
 			{/if}
 		</CardContent>
 	</Card>
 
 	<!-- Development Status -->
-	<Card class="mt-8 border-2 border-yellow-200 bg-gradient-to-r from-yellow-50 to-white">
+	<Card class="mt-8 border-2 border-green-200 bg-gradient-to-r from-green-50 to-white">
 		<CardHeader>
 			<CardTitle class="text-center flex items-center justify-center gap-2">
-				<Icon icon="mdi:hammer-wrench" class="w-5 h-5 text-yellow-600" />
-				Development Status
+				<Icon icon="mdi:check-circle" class="w-5 h-5 text-green-600" />
+				Vault System Active
 			</CardTitle>
 		</CardHeader>
 		<CardContent>
 			<div class="text-center">
 				<p class="text-gray-600 mb-4">
-					Admin dashboard updated to match PRD requirements. Draw management, vault integration, 
-					and distribution system are ready for implementation.
+					✅ Real-time SOL balance tracking integrated<br/>
+					✅ Automatic 50/40/10 distribution calculations<br/>
+					✅ Live vault monitoring with 30-second auto-refresh
 				</p>
 				<div class="text-sm text-gray-500">
-					<span class="font-medium">Next:</span> Build Draw Management Interface with Spinning Wheel
+					<span class="font-medium">Vault Address:</span> 
+					<code class="bg-gray-100 px-2 py-1 rounded text-xs">
+						{vaultData?.address || 'Loading...'}
+					</code>
 				</div>
 			</div>
 		</CardContent>
