@@ -26,8 +26,11 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
       },
       cookies: {
         get(key) {
-          const cookie = parse(document.cookie);
-          return cookie[key];
+          if (typeof document !== 'undefined') {
+            const cookie = parse(document.cookie);
+            return cookie[key];
+          }
+          return undefined;
         },
       },
     })

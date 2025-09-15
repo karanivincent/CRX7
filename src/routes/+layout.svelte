@@ -1,41 +1,35 @@
 <script>
 	import '../app.css';
-	import { goto, invalidate } from '$app/navigation';
 	import { Button } from '$lib/components/ui/button';
-	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
 
-	const { data: propsData, children } = $props();
-
-	const { supabase, session } = propsData;
+	export let data;
 	
-	// Check if we're on an admin route
-	const isAdminRoute = $derived($page.url.pathname.startsWith('/admin'));
-
-	$effect(() => {
-		const { data } = supabase.auth.onAuthStateChange((_, newSession) => {
+	const { supabase, session } = data;
+	
+	// Simple approach - detect admin route from URL on server side
+	let isAdminRoute = false;
+	
+	if (browser) {
+		isAdminRoute = window.location.pathname.startsWith('/admin');
+		
+		// Set up auth state change listener only in browser
+		supabase.auth.onAuthStateChange(async (_, newSession) => {
 			if (!newSession) {
-				/**
-				 * Queue this as a task so the navigation won't prevent the
-				 * triggering function from completing
-				 */
-				setTimeout(() => {
-					goto('/', { invalidateAll: true });
-				});
+				window.location.href = '/';
 			}
 			if (newSession?.expires_at !== session?.expires_at) {
-				invalidate('supabase:auth');
+				window.location.reload();
 			}
 		});
-
-		return () => data.subscription.unsubscribe();
-	});
+	}
 </script>
 
 
 {#if isAdminRoute}
 	<!-- Admin routes - minimal layout -->
 	<div class="min-h-screen">
-		{@render children()}
+		<slot />
 	</div>
 {:else}
 	<!-- Public routes - full layout with nav and footer -->
@@ -68,7 +62,7 @@
 		</nav>
 
 		<main class="flex-grow">
-			{@render children()}
+			<slot />
 		</main>
 
 		<footer class="bg-gray-50 border-t">

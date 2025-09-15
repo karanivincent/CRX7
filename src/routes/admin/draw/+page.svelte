@@ -7,6 +7,7 @@
 	import SpinningWheel from '$lib/components/admin/spinning-wheel.svelte';
 	import { mapWalletsToAnimals, type AnimalMapping } from '$lib/utils/animal-mapping';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	
 	export let data;
 	const { user } = data;
@@ -259,7 +260,7 @@
 	
 	function proceedToDistribution() {
 		// Navigate to distribution page with winners data
-		window.location.href = '/admin/distribution';
+		goto('/admin/distribution');
 	}
 	
 	$: winnerAmount = distributionAmount * 0.5 / 7;
