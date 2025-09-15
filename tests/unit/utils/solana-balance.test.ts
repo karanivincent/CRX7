@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 // Mock Solana web3.js
 const mockConnection = {
 	getBalance: vi.fn(),
-	getVersion: vi.fn()
+	getVersion: vi.fn(),
+	getProgramAccounts: vi.fn()
 };
 
 const mockPublicKey = vi.fn();
@@ -12,6 +13,12 @@ vi.mock('@solana/web3.js', () => ({
 	Connection: vi.fn(() => mockConnection),
 	PublicKey: mockPublicKey,
 	LAMPORTS_PER_SOL: 1000000000
+}));
+
+vi.mock('@solana/spl-token', () => ({
+	TOKEN_PROGRAM_ID: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+	getAssociatedTokenAddress: vi.fn(),
+	getAccount: vi.fn()
 }));
 
 // Import after mocking
@@ -221,7 +228,8 @@ describe('Solana Balance Utilities', () => {
 		const testAddress = 'E7xvXRobsFnwXeQ4UKQnkymyTgpKLkZFD2hmRbPW7bXi';
 
 		beforeEach(() => {
-			mockConnection.getBalance.mockResolvedValue(5000000000);
+			mockConnection.getBalance.mockResolvedValue(10000000000); // 10 SOL in lamports
+			mockConnection.getProgramAccounts.mockResolvedValue([]); // No WSOL accounts
 			mockPublicKey.mockImplementation(() => ({ toBase58: () => testAddress }));
 		});
 
@@ -248,7 +256,9 @@ describe('Solana Balance Utilities', () => {
 
 			expect(cacheInfo).toHaveLength(1);
 			expect(cacheInfo[0]).toHaveProperty('address', testAddress);
-			expect(cacheInfo[0]).toHaveProperty('balance', 5);
+			expect(cacheInfo[0]).toHaveProperty('solBalance', 10);
+			expect(cacheInfo[0]).toHaveProperty('wsolBalance', 0);
+			expect(cacheInfo[0]).toHaveProperty('totalBalance', 10);
 			expect(cacheInfo[0]).toHaveProperty('timestamp');
 		});
 	});

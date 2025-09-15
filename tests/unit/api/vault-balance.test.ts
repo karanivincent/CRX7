@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the vault utilities
 const mockGetVaultInfo = vi.fn();
+const mockGetDetailedBalance = vi.fn();
 const mockCheckSolanaConnection = vi.fn();
 
 vi.mock('../../../src/lib/utils/solana-balance', () => ({
 	getVaultInfo: mockGetVaultInfo,
+	getDetailedBalance: mockGetDetailedBalance,
 	checkSolanaConnection: mockCheckSolanaConnection
 }));
 
@@ -69,9 +71,20 @@ describe('Vault Balance API', () => {
 			}
 		};
 
+		const mockDetailedBalance = {
+			solBalance: 0,
+			wsolBalance: 127.5,
+			totalBalance: 127.5,
+			solFormatted: '0.00 SOL',
+			wsolFormatted: '127.50 SOL',
+			totalFormatted: '127.50 SOL',
+			cached: false
+		};
+
 		it('should return vault balance and distribution data', async () => {
 			mockUrl.searchParams.get.mockReturnValue(null);
 			mockGetVaultInfo.mockResolvedValue(mockVaultInfo);
+			mockGetDetailedBalance.mockResolvedValue(mockDetailedBalance);
 
 			const response = await GET({ url: mockUrl });
 			const data = await response.json();
@@ -79,6 +92,9 @@ describe('Vault Balance API', () => {
 			expect(data.success).toBe(true);
 			expect(data.vault.balance).toBe(127.5);
 			expect(data.vault.balanceFormatted).toBe('127.50 SOL');
+			expect(data.vault.breakdown.solBalance).toBe(0);
+			expect(data.vault.breakdown.wsolBalance).toBe(127.5);
+			expect(data.vault.breakdown.totalBalance).toBe(127.5);
 			expect(data.distribution.winners.amount).toBe(63.75);
 			expect(data.distribution.holding.amount).toBe(51.0);
 			expect(data.distribution.charity.amount).toBe(12.75);
@@ -88,19 +104,23 @@ describe('Vault Balance API', () => {
 		it('should use cache by default', async () => {
 			mockUrl.searchParams.get.mockReturnValue(null);
 			mockGetVaultInfo.mockResolvedValue(mockVaultInfo);
+			mockGetDetailedBalance.mockResolvedValue(mockDetailedBalance);
 
 			await GET({ url: mockUrl });
 
 			expect(mockGetVaultInfo).toHaveBeenCalledWith(mockTokenConfig.rewardVault, true);
+			expect(mockGetDetailedBalance).toHaveBeenCalledWith(mockTokenConfig.rewardVault, true);
 		});
 
 		it('should bypass cache when refresh=true', async () => {
 			mockUrl.searchParams.get.mockReturnValue('true');
 			mockGetVaultInfo.mockResolvedValue(mockVaultInfo);
+			mockGetDetailedBalance.mockResolvedValue(mockDetailedBalance);
 
 			await GET({ url: mockUrl });
 
 			expect(mockGetVaultInfo).toHaveBeenCalledWith(mockTokenConfig.rewardVault, false);
+			expect(mockGetDetailedBalance).toHaveBeenCalledWith(mockTokenConfig.rewardVault, false);
 		});
 
 		it('should return error when Solana connection is unhealthy', async () => {
@@ -186,6 +206,92 @@ describe('Vault Balance API', () => {
 			expect(data.success).toBe(false);
 			expect(data.error).toBe('Failed to refresh vault balance');
 			expect(data.message).toBe('Refresh failed');
+		});
+
+		it('should handle WSOL-only vault scenario', async () => {
+			const wsolOnlyVaultInfo = {
+				...mockVaultInfo,
+				balance: 27.48,
+				balanceFormatted: '27.48 SOL',
+				distribution: {
+					total: 27.48,
+					winners: { amount: 13.74, percentage: 50, formatted: '13.74 SOL' },
+					holding: { amount: 10.99, percentage: 40, formatted: '10.99 SOL' },
+					charity: { amount: 2.75, percentage: 10, formatted: '2.75 SOL' }
+				},
+				winnerBreakdown: {
+					numberOfWinners: 7,
+					perWinner: 1.963,
+					perWinnerFormatted: '1.963 SOL'
+				}
+			};
+
+			const wsolOnlyDetailedBalance = {
+				solBalance: 0,
+				wsolBalance: 27.48,
+				totalBalance: 27.48,
+				solFormatted: '0.00 SOL',
+				wsolFormatted: '27.48 SOL',
+				totalFormatted: '27.48 SOL',
+				cached: false
+			};
+
+			mockUrl.searchParams.get.mockReturnValue(null);
+			mockGetVaultInfo.mockResolvedValue(wsolOnlyVaultInfo);
+			mockGetDetailedBalance.mockResolvedValue(wsolOnlyDetailedBalance);
+
+			const response = await GET({ url: mockUrl });
+			const data = await response.json();
+
+			expect(data.success).toBe(true);
+			expect(data.vault.breakdown.solBalance).toBe(0);
+			expect(data.vault.breakdown.wsolBalance).toBe(27.48);
+			expect(data.vault.breakdown.totalBalance).toBe(27.48);
+			expect(data.vault.breakdown.wsolFormatted).toBe('27.48 SOL');
+		});
+
+		it('should handle mixed SOL and WSOL scenario', async () => {
+			const mixedVaultInfo = {
+				...mockVaultInfo,
+				balance: 32.5,
+				balanceFormatted: '32.50 SOL',
+				distribution: {
+					total: 32.5,
+					winners: { amount: 16.25, percentage: 50, formatted: '16.25 SOL' },
+					holding: { amount: 13.0, percentage: 40, formatted: '13.00 SOL' },
+					charity: { amount: 3.25, percentage: 10, formatted: '3.25 SOL' }
+				},
+				winnerBreakdown: {
+					numberOfWinners: 7,
+					perWinner: 2.321,
+					perWinnerFormatted: '2.321 SOL'
+				}
+			};
+
+			const mixedDetailedBalance = {
+				solBalance: 5.0,
+				wsolBalance: 27.5,
+				totalBalance: 32.5,
+				solFormatted: '5.00 SOL',
+				wsolFormatted: '27.50 SOL',
+				totalFormatted: '32.50 SOL',
+				cached: false
+			};
+
+			mockUrl.searchParams.get.mockReturnValue(null);
+			mockGetVaultInfo.mockResolvedValue(mixedVaultInfo);
+			mockGetDetailedBalance.mockResolvedValue(mixedDetailedBalance);
+
+			const response = await GET({ url: mockUrl });
+			const data = await response.json();
+
+			expect(data.success).toBe(true);
+			expect(data.vault.breakdown.solBalance).toBe(5.0);
+			expect(data.vault.breakdown.wsolBalance).toBe(27.5);
+			expect(data.vault.breakdown.totalBalance).toBe(32.5);
+			expect(data.vault.breakdown.solFormatted).toBe('5.00 SOL');
+			expect(data.vault.breakdown.wsolFormatted).toBe('27.50 SOL');
+			expect(data.vault.breakdown.totalFormatted).toBe('32.50 SOL');
 		});
 	});
 
