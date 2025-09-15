@@ -2,7 +2,6 @@
 	import '../app.css';
 	import { goto, invalidate } from '$app/navigation';
 	import { ModeWatcher } from 'mode-watcher';
-	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 	import { Button } from '$lib/components/ui/button';
 
 	const { data: propsData, children } = $props();
@@ -32,26 +31,42 @@
 <ModeWatcher />
 
 <div class="flex min-h-screen flex-col">
-	<nav class="border-b p-2">
-		<div class="mx-auto flex w-full max-w-2xl items-center justify-between">
-			<a href="/" class="text-2xl font-bold">App</a>
+	<nav class="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+		<div class="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
+			<a href="/" class="text-xl font-bold text-gray-900">CRx7</a>
 
-			<div class="flex gap-2">
-				<ThemeToggle />
+			<div class="flex items-center gap-4">
+				<a href="/leaderboard" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+					🏆 Leaderboard
+				</a>
+				<a href="/past-draws" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+					📊 Past Draws
+				</a>
+				<a href="/winners" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+					🎉 Winners
+				</a>
+				<a href="/how-it-works" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
+					❓ How it works
+				</a>
 				{#if session !== null}
-					<Button href="/auth/logout">logout</Button>
+					<Button href="/admin" variant="outline" size="sm">Admin</Button>
+					<Button href="/auth/logout" variant="ghost" size="sm">Logout</Button>
+				{:else}
+					<Button href="/login" size="sm">Admin Login</Button>
 				{/if}
 			</div>
 		</div>
 	</nav>
 
-	<main class="mx-auto w-full max-w-2xl flex-grow px-2 py-5 md:px-0">
+	<main class="flex-grow">
 		{@render children()}
 	</main>
 
-	<footer class="w-full border-t py-5">
-		<div class="mx-auto flex w-full max-w-2xl items-center justify-center">
-			<a href="https://github.com/engageintellect" class="text-sm">@engageintellect</a>
+	<footer class="bg-gray-50 border-t">
+		<div class="mx-auto max-w-7xl px-6 py-8">
+			<div class="flex items-center justify-center">
+				<p class="text-sm text-gray-600">© 2024 CRx7. All rights reserved.</p>
+			</div>
 		</div>
 	</footer>
 </div>
