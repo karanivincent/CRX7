@@ -10,13 +10,15 @@
 	import { goto } from '$app/navigation';
 	
 	export let data;
-	const { user } = data;
+	const { user, vaultBalance, vaultError } = data;
 	
 	const tokenDisplay = getTokenDisplay();
 	
 	// Draw state
 	let currentDraw: any = null;
-	let distributionAmount = 100; // From previous page or API
+	let vaultTotalBalance = vaultBalance || 0; // Live vault balance
+	let distributionAmount = (vaultBalance || 0) * 0.5; // Winners get 50% of vault
+	let isRefreshingBalance = false;
 	let roundStatus = 'not_started'; // not_started, active, completed
 	let currentSpin = 0;
 	let maxSpins = 7;
@@ -38,7 +40,30 @@
 	// Load current draw status on mount
 	onMount(async () => {
 		await loadCurrentDraw();
+		// Refresh vault balance on mount to ensure it's current
+		await refreshVaultBalance();
 	});
+
+	// Function to refresh vault balance
+	async function refreshVaultBalance() {
+		try {
+			isRefreshingBalance = true;
+			const response = await fetch('/api/vault/balance?refresh=true');
+			const result = await response.json();
+			
+			if (result.success) {
+				vaultTotalBalance = result.vault.balance;
+				distributionAmount = vaultTotalBalance * 0.5; // Winners get 50% of vault
+				console.log(`Updated winner distribution amount: ${distributionAmount} SOL (50% of ${vaultTotalBalance} SOL vault)`);
+			} else {
+				console.error('Failed to refresh vault balance:', result.error);
+			}
+		} catch (err) {
+			console.error('Error refreshing vault balance:', err);
+		} finally {
+			isRefreshingBalance = false;
+		}
+	}
 
 	async function loadCurrentDraw() {
 		try {
@@ -251,7 +276,7 @@
 				const winnerData = {
 					participantId: '', // Will be resolved by the API
 					walletAddress: winner,
-					prizeAmount: (distributionAmount * 0.5 / 7).toString(),
+					prizeAmount: winnerAmount.toString(), // Use calculated winner amount from live vault balance
 					position: currentSpin
 				};
 				
@@ -301,9 +326,9 @@
 		goto('/admin/distribution');
 	}
 	
-	$: winnerAmount = distributionAmount * 0.5 / 7;
-	$: holdingAmount = distributionAmount * 0.4;
-	$: charityAmount = distributionAmount * 0.1;
+	$: winnerAmount = distributionAmount / 7; // distributionAmount is already 50% of vault
+	$: holdingAmount = vaultTotalBalance * 0.4; // Calculate from total vault balance
+	$: charityAmount = vaultTotalBalance * 0.1; // Calculate from total vault balance
 </script>
 
 <svelte:head>
@@ -330,6 +355,20 @@
 					</div>
 					<div class="text-green-600 font-bold">
 						💰 {winnerAmount.toFixed(3)} SOL Each
+					</div>
+					<div class="text-blue-600 font-bold flex items-center gap-2">
+						🏆 Winner Pool: {distributionAmount.toFixed(2)} SOL
+						<button 
+							on:click={refreshVaultBalance}
+							disabled={isRefreshingBalance}
+							class="p-1 text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+							title="Refresh winner pool amount"
+						>
+							<Icon 
+								icon="mdi:refresh" 
+								class="w-4 h-4 {isRefreshingBalance ? 'animate-spin' : ''}" 
+							/>
+						</button>
 					</div>
 				</div>
 			</div>
@@ -522,8 +561,13 @@
 								<Icon icon="mdi:dice-6" class="w-16 h-16 mx-auto mb-4 text-gray-300" />
 								<h3 class="text-lg font-medium text-gray-900 mb-2">Ready to Start Drawing</h3>
 								<p class="text-gray-600 mb-6">
-									Click below to begin a new lottery round with {distributionAmount} SOL
+									Click below to begin a new lottery round with {distributionAmount.toFixed(2)} SOL winner pool
 								</p>
+								{#if vaultError}
+									<div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+										<p class="text-yellow-700 text-sm">⚠️ Vault balance warning: {vaultError}</p>
+									</div>
+								{/if}
 								{#if error}
 									<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
 										<p class="text-red-600 text-sm">{error}</p>
@@ -565,10 +609,28 @@
 						</CardTitle>
 					</CardHeader>
 					<CardContent class="space-y-3">
-						<div class="flex justify-between">
-							<span class="text-gray-600">Distribution Amount:</span>
-							<span class="font-bold">{distributionAmount} SOL</span>
+						<div class="flex justify-between items-center">
+							<span class="text-gray-600">Winner Pool Total:</span>
+							<div class="flex items-center gap-2">
+								<span class="font-bold">{distributionAmount.toFixed(2)} SOL</span>
+								<button 
+									on:click={refreshVaultBalance}
+									disabled={isRefreshingBalance}
+									class="p-1 text-blue-600 hover:text-blue-800 disabled:text-gray-400"
+									title="Refresh winner pool amount"
+								>
+									<Icon 
+										icon="mdi:refresh" 
+										class="w-4 h-4 {isRefreshingBalance ? 'animate-spin' : ''}" 
+									/>
+								</button>
+							</div>
 						</div>
+						{#if vaultError}
+							<div class="text-xs text-red-600 bg-red-50 p-2 rounded">
+								⚠️ Vault balance error: {vaultError}
+							</div>
+						{/if}
 						<div class="flex justify-between">
 							<span class="text-gray-600">Per Winner:</span>
 							<span class="font-bold text-orange-600">{winnerAmount.toFixed(3)} SOL</span>
