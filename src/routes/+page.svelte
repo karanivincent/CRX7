@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import Icon from '@iconify/svelte';
 	import { getTokenDisplay, getLotteryDescription, getDistributionText } from '$lib/config/client';
 	
 	// Use client-safe defaults 
@@ -90,7 +89,7 @@
 					<div class="relative pl-16 hover:scale-105 transition-transform">
 						<dt class="text-base font-semibold leading-7 text-gray-900">
 							<div class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 animate-pulse">
-								<Icon icon="mdi:wallet" class="h-7 w-7 text-white" />
+								<span class="text-white text-2xl">💼</span>
 							</div>
 							1. HODL {tokenDisplay} Like a Chad 💎🙌
 						</dt>
@@ -102,7 +101,7 @@
 					<div class="relative pl-16 hover:scale-105 transition-transform">
 						<dt class="text-base font-semibold leading-7 text-gray-900">
 							<div class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 animate-pulse">
-								<Icon icon="mdi:dice-6" class="h-7 w-7 text-white" />
+								<span class="text-white text-2xl">🎲</span>
 							</div>
 							2. RNG Gods Choose 7 Lucky Degens 🎲
 						</dt>
@@ -114,7 +113,7 @@
 					<div class="relative pl-16 hover:scale-105 transition-transform">
 						<dt class="text-base font-semibold leading-7 text-gray-900">
 							<div class="absolute left-0 top-0 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 animate-pulse">
-								<Icon icon="mdi:trophy" class="h-7 w-7 text-white" />
+								<span class="text-white text-2xl">🏆</span>
 							</div>
 							3. Receive SOL, Achieve Nirvana 🏆
 						</dt>
@@ -171,9 +170,9 @@
 			</dl>
 			<div class="mt-16 text-center">
 				<div class="inline-flex items-center gap-2 px-4 py-2 bg-orange-50 rounded-full border border-orange-200">
-					<Icon icon="mdi:fire" class="h-5 w-5 text-orange-500 animate-bounce" />
+					<span class="text-orange-500 animate-bounce">🔥</span>
 					<span class="text-sm font-semibold text-orange-800">Stats update in real-time (or close to it) 🔥</span>
-					<Icon icon="mdi:fire" class="h-5 w-5 text-orange-500 animate-bounce" />
+					<span class="text-orange-500 animate-bounce">🔥</span>
 				</div>
 			</div>
 		</div>
@@ -212,15 +211,15 @@
 				</div>
 				<div class="mt-8 flex flex-wrap justify-center gap-4 text-sm text-orange-200">
 					<span class="flex items-center gap-1">
-						<Icon icon="mdi:check-circle" class="h-4 w-4 text-green-300" />
+						<span class="text-green-300">✅</span>
 						No rugs here, ser
 					</span>
 					<span class="flex items-center gap-1">
-						<Icon icon="mdi:check-circle" class="h-4 w-4 text-green-300" />
+						<span class="text-green-300">✅</span>
 						100% transparent draws
 					</span>
 					<span class="flex items-center gap-1">
-						<Icon icon="mdi:check-circle" class="h-4 w-4 text-green-300" />
+						<span class="text-green-300">✅</span>
 						Diamond hands only 💎
 					</span>
 				</div>
@@ -258,7 +257,7 @@
 			</div>
 			<div class="text-center mt-12">
 				<div class="inline-flex items-center gap-2 px-6 py-3 bg-orange-600 text-white rounded-full font-semibold hover:bg-orange-700 transition-colors">
-					<Icon icon="mdi:discord" class="h-5 w-5" />
+					<span>💬</span>
 					Join the degen army on Discord (Coming Soon™)
 				</div>
 			</div>

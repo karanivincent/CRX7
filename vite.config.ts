@@ -13,9 +13,6 @@ export default defineConfig({
 			'$app': new URL('./src/app', import.meta.url).pathname
 		}
 	},
-	resolve: {
-		conditions: ['browser']
-	},
 	server: {
 		hmr: {
 			overlay: false

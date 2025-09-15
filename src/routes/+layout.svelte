@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { Button } from '$lib/components/ui/button';
 	import { browser } from '$app/environment';
+	import { goto, invalidateAll } from '$app/navigation';
 
 	export let data;
 	
@@ -11,10 +12,10 @@
 		// Set up auth state change listener only in browser
 		supabase.auth.onAuthStateChange(async (_, newSession) => {
 			if (!newSession) {
-				window.location.href = '/';
+				goto('/');
 			}
 			if (newSession?.expires_at !== session?.expires_at) {
-				window.location.reload();
+				invalidateAll();
 			}
 		});
 	}

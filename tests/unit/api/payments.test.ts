@@ -284,7 +284,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(markPaidRequest);
+      await POST({ request: markPaidRequest } as any);
 
       const { markWinnerPaid } = await import('$lib/db/queries');
       expect(markWinnerPaid).toHaveBeenCalledWith('winner-2', 'manual-tx-hash');
@@ -312,7 +312,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(request);
+      await POST({ request } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -330,7 +330,7 @@ describe('Payments API', () => {
         })
       } as any;
 
-      await POST(request);
+      await POST({ request } as any);
 
       expect(mockJson).toHaveBeenCalledWith(
         expect.objectContaining({

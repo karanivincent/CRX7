@@ -286,7 +286,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(createRequest);
+      await POST({ request: createRequest } as any);
       expect(mockJson).toHaveBeenCalledWith({ draw: mockDraw });
 
       // Start draw
@@ -297,7 +297,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(startRequest);
+      await POST({ request: startRequest } as any);
       expect(mockJson).toHaveBeenCalledWith({ draw: mockDraw });
 
       // Add participants
@@ -313,7 +313,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(participantsRequest);
+      await POST({ request: participantsRequest } as any);
       expect(mockJson).toHaveBeenCalledWith({ participants: mockParticipants });
 
       // Record winner
@@ -329,7 +329,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(winnersRequest);
+      await POST({ request: winnersRequest } as any);
       expect(mockJson).toHaveBeenCalledWith({ winners: mockWinners });
 
       // Complete draw
@@ -340,7 +340,7 @@ describe('Draws API', () => {
         })
       } as any;
 
-      await POST(completeRequest);
+      await POST({ request: completeRequest } as any);
       expect(mockJson).toHaveBeenCalledWith({ draw: mockDraw });
     });
   });
