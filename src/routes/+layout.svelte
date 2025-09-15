@@ -1,7 +1,6 @@
 <script>
 	import '../app.css';
 	import { goto, invalidate } from '$app/navigation';
-	import { ModeWatcher } from 'mode-watcher';
 	import { Button } from '$lib/components/ui/button';
 
 	const { data: propsData, children } = $props();
@@ -28,7 +27,6 @@
 	});
 </script>
 
-<ModeWatcher />
 
 <div class="flex min-h-screen flex-col">
 	<nav class="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
