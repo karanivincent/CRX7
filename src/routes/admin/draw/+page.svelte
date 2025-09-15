@@ -31,21 +31,9 @@
 	let isLoading = false;
 	let error = '';
 	
-	// Mock eligible holders
-	const mockHolders = [
-		'8K9bPq5zN6tYrA7mW2p3Vx4d',
-		'9J2cRe7zA5sB8nM4x6wV9qTy',
-		'5F3dGh8kL9pQ2rA7mX4nB6yZ',
-		'7H5jKl2nQ8vB4mR6wA9sE3xZ',
-		'2A8dF3kP7nR9vB5mQ6wE4yTz',
-		'6B9jKp3rQ7nV5mA8sE2wF4xY',
-		'4C7hJl5nP9rB3mQ6wA8sE2yV',
-		'3D6gHk8pQ2nR7vB4mA5sE9wX',
-		'1E4fGj7kL9pQ3nR8vB6mA2sW',
-		'9G2hJl4nP8rQ5vB7mA3sE6wZ',
-		'8H5jKp7nQ9rB4vA6mS2eW1xY',
-		'7J3gHl6kP2nQ8rB5vA9mS4eW'
-	];
+	// Configuration for holder selection
+	const MINIMUM_TOKEN_BALANCE = 100; // Minimum tokens required to participate
+	const CANDIDATES_PER_ROUND = 7; // Number of candidates per round
 
 	// Load current draw status on mount
 	onMount(async () => {
@@ -83,13 +71,14 @@
 			const dashboardData = await dashboardResponse.json();
 			
 			if (dashboardData.participants) {
-				currentCandidates = dashboardData.participants.map((p: any) => p.walletAddress);
+				currentCandidates = dashboardData.participants.map((p: any) => p.wallet_address);
+				// Use animal data from database participants
 				animalMappings = dashboardData.participants.map((p: any) => ({
-					walletAddress: p.walletAddress,
+					walletAddress: p.wallet_address,
 					animal: {
-						name: p.animalName,
-						emoji: p.animalEmoji,
-						description: `${p.animalName} participant`
+						name: p.animal_name,
+						emoji: p.animal_emoji,
+						description: `${p.animal_name} participant`
 					}
 				}));
 			}
@@ -162,14 +151,42 @@
 	
 	async function generateCandidates() {
 		try {
-			// TODO: Replace with actual Helius API call when ready
-			// For now, use mock data and exclude previous winners
-			const availableHolders = mockHolders.filter(
-				holder => !selectedWinners.some(winner => winner.address === holder)
-			);
+			isLoading = true;
+			error = '';
 			
-			const shuffled = [...availableHolders].sort(() => 0.5 - Math.random());
-			currentCandidates = shuffled.slice(0, 7);
+			// Fetch real token holders from blockchain
+			console.log('Fetching real token holders from blockchain...');
+			const holdersResponse = await fetch('/api/holders');
+			const holdersData = await holdersResponse.json();
+			
+			if (!holdersData.success) {
+				throw new Error(holdersData.message || 'Failed to fetch token holders');
+			}
+			
+			console.log(`Found ${holdersData.holders.length} total token holders`);
+			
+			// Filter holders by minimum balance and exclude previous winners
+			const eligibleHolders = holdersData.holders.filter(holder => {
+				const hasMinBalance = holder.balance >= (MINIMUM_TOKEN_BALANCE * Math.pow(10, holder.decimals || 6));
+				const notPreviousWinner = !selectedWinners.some(winner => winner.address === holder.address);
+				return hasMinBalance && notPreviousWinner;
+			});
+			
+			console.log(`${eligibleHolders.length} holders meet minimum balance requirement of ${MINIMUM_TOKEN_BALANCE} tokens`);
+			
+			if (eligibleHolders.length < CANDIDATES_PER_ROUND) {
+				throw new Error(`Not enough eligible holders. Need ${CANDIDATES_PER_ROUND}, found ${eligibleHolders.length}`);
+			}
+			
+			// Randomly select candidates
+			const shuffled = [...eligibleHolders].sort(() => 0.5 - Math.random());
+			const selectedHolders = shuffled.slice(0, CANDIDATES_PER_ROUND);
+			
+			// Extract wallet addresses for the spinning wheel
+			currentCandidates = selectedHolders.map(holder => holder.address);
+			allHolders = eligibleHolders.map(holder => holder.address);
+			
+			console.log(`Selected ${currentCandidates.length} candidates for this round`);
 			
 			// Update animal mappings
 			animalMappings = mapWalletsToAnimals(currentCandidates);
@@ -190,10 +207,31 @@
 				
 				if (!response.ok) {
 					console.error('Failed to save participants to database');
+				} else {
+					console.log('Successfully saved participants to database');
 				}
 			}
 		} catch (err) {
 			console.error('Error generating candidates:', err);
+			error = err instanceof Error ? err.message : 'Failed to generate candidates';
+			
+			// Fallback to previous behavior if API fails
+			if (currentCandidates.length === 0) {
+				console.log('Falling back to mock data due to API failure');
+				const mockFallback = [
+					'8K9bPq5zN6tYrA7mW2p3Vx4d',
+					'9J2cRe7zA5sB8nM4x6wV9qTy',
+					'5F3dGh8kL9pQ2rA7mX4nB6yZ',
+					'7H5jKl2nQ8vB4mR6wA9sE3xZ',
+					'2A8dF3kP7nR9vB5mQ6wE4yTz',
+					'6B9jKp3rQ7nV5mA8sE2wF4xY',
+					'4C7hJl5nP9rB3mQ6wA8sE2yV'
+				];
+				currentCandidates = mockFallback.slice(0, CANDIDATES_PER_ROUND);
+				animalMappings = mapWalletsToAnimals(currentCandidates);
+			}
+		} finally {
+			isLoading = false;
 		}
 	}
 	
@@ -296,6 +334,20 @@
 				</div>
 			</div>
 
+			<!-- Error Display -->
+			{#if error}
+				<div class="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-lg">
+					<div class="flex items-center gap-2 text-red-800">
+						<Icon icon="mdi:alert-circle" class="w-5 h-5" />
+						<span class="font-bold">API Error:</span>
+						<span>{error}</span>
+					</div>
+					<div class="text-red-600 text-sm mt-1">
+						Using fallback data. Check console for details.
+					</div>
+				</div>
+			{/if}
+
 			<!-- Top Row: Spinning Wheel Left, Winner Display Right -->
 			<!-- Use min-width breakpoint for responsive layout -->
 			<div class="grid grid-cols-1 min-[1200px]:grid-cols-5 gap-6 mb-8">
@@ -361,7 +413,14 @@
 					<CardHeader>
 						<CardTitle class="text-center">🎯 Current Contestants</CardTitle>
 						<CardDescription class="text-center">
-							{currentCandidates.length} crypto animals competing for {winnerAmount.toFixed(3)} SOL
+							{currentCandidates.length} real token holders competing for {winnerAmount.toFixed(3)} SOL
+							<div class="text-xs text-gray-500 mt-1">
+								{#if allHolders.length > 0}
+									Selected from {allHolders.length} eligible holders with {MINIMUM_TOKEN_BALANCE}+ tokens
+								{:else}
+									Fetched from blockchain • Min {MINIMUM_TOKEN_BALANCE} tokens required
+								{/if}
+							</div>
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -377,8 +436,8 @@
 										</div>
 									</div>
 									<div class="text-xs font-mono text-gray-600 text-right">
-										<div>{candidate.slice(0, 6)}...</div>
-										<div>{candidate.slice(-6)}</div>
+										<div>{candidate?.slice(0, 6) || ''}...</div>
+										<div>{candidate?.slice(-6) || ''}</div>
 									</div>
 								</div>
 							{/each}
@@ -402,7 +461,7 @@
 									</div>
 									<span class="font-bold">{winner.animal}</span>
 									<span class="text-xs font-mono text-gray-600">
-										{winner.address.slice(0, 4)}...{winner.address.slice(-4)}
+										{winner.address?.slice(0, 4) || ''}...{winner.address?.slice(-4) || ''}
 									</span>
 								</div>
 							{/each}
@@ -552,7 +611,7 @@
 										</div>
 										<div class="flex-1">
 											<div class="font-bold text-lg">{winner.animal}</div>
-											<div class="font-mono text-xs text-gray-600">{winner.address.slice(0, 8)}...{winner.address.slice(-8)}</div>
+											<div class="font-mono text-xs text-gray-600">{winner.address?.slice(0, 8) || ''}...{winner.address?.slice(-8) || ''}</div>
 										</div>
 										<Icon icon="mdi:check" class="w-4 h-4 text-green-600" />
 									</div>
@@ -576,7 +635,7 @@
 								{#each currentCandidates as candidate}
 									<div class="flex items-center gap-2 p-2 bg-purple-50 rounded text-sm font-mono">
 										<Icon icon="mdi:account" class="w-4 h-4 text-purple-600" />
-										{candidate.slice(0, 8)}...{candidate.slice(-8)}
+										{candidate?.slice(0, 8) || ''}...{candidate?.slice(-8) || ''}
 									</div>
 								{/each}
 							</div>

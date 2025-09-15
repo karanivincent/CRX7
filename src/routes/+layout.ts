@@ -12,7 +12,7 @@ import {
 
 import type { LayoutLoad } from "./$types";
 
-export const load: LayoutLoad = async ({ data, depends, fetch }) => {
+export const load: LayoutLoad = async ({ data, depends, fetch, url }) => {
   /**
    * Declare a dependency so the layout can be invalidated, for example, on
    * session refresh.
@@ -58,5 +58,8 @@ export const load: LayoutLoad = async ({ data, depends, fetch }) => {
     data: { user },
   } = await supabase.auth.getUser();
 
-  return { session, supabase, user };
+  // Determine if this is an admin route
+  const isAdminRoute = url.pathname.startsWith('/admin');
+
+  return { session, supabase, user, isAdminRoute };
 };

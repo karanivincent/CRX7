@@ -5,14 +5,9 @@
 
 	export let data;
 	
-	const { supabase, session } = data;
-	
-	// Simple approach - detect admin route from URL on server side
-	let isAdminRoute = false;
+	const { supabase, session, isAdminRoute } = data;
 	
 	if (browser) {
-		isAdminRoute = window.location.pathname.startsWith('/admin');
-		
 		// Set up auth state change listener only in browser
 		supabase.auth.onAuthStateChange(async (_, newSession) => {
 			if (!newSession) {

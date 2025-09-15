@@ -7,6 +7,7 @@ import {
   updateDrawStatus,
   addParticipants,
   getDrawParticipants,
+  clearDrawParticipants,
   addWinners,
   getDrawWinners,
   getLatestWinners,
@@ -55,9 +56,10 @@ export async function setupDrawParticipants(drawId: string, participants: Animal
   const insertedParticipants = await addParticipants(drawId, participants);
   
   // Update draw stats
-  await updateDrawStats(drawId, {
-    totalParticipants: participants.length
-  });
+  // TODO: Implement updateDrawStats function in supabase-operations.ts
+  // await updateDrawStats(drawId, {
+  //   totalParticipants: participants.length
+  // });
   
   return insertedParticipants;
 }

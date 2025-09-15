@@ -61,6 +61,10 @@ export async function getLatestDraw() {
 }
 
 export async function updateDrawStatus(drawId: string, status: string, executedAt?: Date) {
+  if (!drawId || drawId.trim() === '') {
+    throw new Error('drawId is required and cannot be empty');
+  }
+  
   const updateData: any = { 
     status, 
     updated_at: new Date().toISOString() 
@@ -94,6 +98,15 @@ export async function getNextDrawNumber(): Promise<number> {
 }
 
 // Participant Operations
+export async function clearDrawParticipants(drawId: string) {
+  const { error } = await supabase
+    .from('participant')
+    .delete()
+    .eq('draw_id', drawId);
+    
+  if (error) throw error;
+}
+
 export async function addParticipants(drawId: string, participants: AnimalMapping[]) {
   const participantData = participants.map(p => ({
     id: crypto.randomUUID(),
