@@ -24,16 +24,8 @@
     }, 500);
   });
   
-  async function continueToNextDraw() {
-    console.log('🎯 Next Round button clicked - calling drawActions.nextStage()');
+  function continueToNextDraw() {
     drawActions.nextStage();
-    console.log('✅ drawActions.nextStage() completed');
-    
-    // Force a page refresh to ensure UI updates with the new stage
-    // This is a temporary solution to ensure the stage transition is visible
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
   }
   
   // Extract animal emoji and name from winner.animal string
@@ -112,7 +104,7 @@
       
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {#each winners as winner, index}
-          {@const animal = parseAnimal(winner.animal)}
+          {@const animal = parseAnimal(winner.animal || 'Unknown Animal')}
           <div class="bg-white rounded-lg p-4 border-2 border-green-200 shadow-lg hover:shadow-xl transition-all duration-300">
             <div class="text-center">
               <div class="flex items-center justify-between mb-2">
@@ -128,7 +120,7 @@
                 {animal.name}
               </div>
               <div class="text-xs text-gray-500 font-mono break-all">
-                {winner.address.slice(0, 8)}...{winner.address.slice(-6)}
+                {winner.address ? `${winner.address.slice(0, 8)}...${winner.address.slice(-6)}` : 'No address'}
               </div>
             </div>
           </div>

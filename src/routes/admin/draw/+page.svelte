@@ -67,11 +67,6 @@
 	$: selectedWinners = $winners;
 	$: progress = $roundProgress;
 	
-	// Debug reactive changes
-	$: if (currentStageValue) {
-		console.log(`🔄 UI Stage Changed: ${currentStageValue}, Draw: ${currentDrawNumber}`);
-	}
-	
 	// Calculated values
 	$: prizePerWinner = distributionAmount / MAX_DRAWS;
 	$: remainingDraws = MAX_DRAWS - selectedWinners.length;
