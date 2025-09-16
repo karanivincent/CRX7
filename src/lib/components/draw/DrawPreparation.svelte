@@ -5,9 +5,9 @@
   import { drawActions, contestants } from '$lib/stores/draw-state';
   import type { AnimalMapping } from '$lib/utils/animal-mapping';
   
-  export let drawNumber: number;
-  export let maxDraws: number;
-  export let prizeAmount: number;
+  export let drawNumber: number = 1;
+  export let maxDraws: number = 7;
+  export let prizeAmount: number = 0;
   export let onGenerateContestants: () => Promise<void>;
   export let autoProgress: boolean = false;
   

@@ -9,10 +9,10 @@
     address: string;
     animal: string;
     prizeAmount: number;
-  }>;
-  export let remainingDraws: number;
-  export let totalPrizeRemaining: number;
-  export let eligibleHoldersRemaining: number;
+  }> = [];
+  export let remainingDraws: number = 0;
+  export let totalPrizeRemaining: number = 0;
+  export let eligibleHoldersRemaining: number = 0;
   export let autoProgress: boolean = false;
   
   let showStats = false;
@@ -153,11 +153,16 @@
           </div>
         {/if}
       {:else}
-        <div class="bg-green-50 rounded-lg p-6 border-2 border-green-200">
+        <div class="bg-green-50 rounded-lg p-6 border-2 border-green-200 mb-6">
           <div class="text-6xl mb-4">🎊</div>
           <h3 class="text-2xl font-bold text-green-600">All Draws Complete!</h3>
           <p class="text-green-700 mt-2">Ready for the grand finale...</p>
         </div>
+        
+        <Button on:click={continueToNextDraw} size="lg" class="bg-green-600 hover:bg-green-700 text-white px-8 py-4 text-xl">
+          <Icon icon="mdi:trophy" class="mr-2 h-6 w-6" />
+          Proceed to Grand Finale
+        </Button>
       {/if}
     </div>
   {/if}

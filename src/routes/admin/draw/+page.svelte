@@ -62,10 +62,19 @@
 	
 	// Reactive values from stores
 	$: currentStageValue = $currentStage;
-	$: currentDrawNumber = $currentDraw;
 	$: currentContestants = $contestants;
 	$: selectedWinners = $winners;
 	$: progress = $roundProgress;
+	
+	// Reference calculation for debugging - NOT used for automatic updates
+	$: calculatedDrawNumber = Math.min(selectedWinners.length + 1, MAX_DRAWS);
+	
+	// Log any mismatches for debugging but don't auto-correct
+	$: {
+		if ($currentDraw !== calculatedDrawNumber && selectedWinners.length > 0) {
+			console.log(`📊 Draw state: store=${$currentDraw}, calculated=${calculatedDrawNumber}, winners=${selectedWinners.length}`);
+		}
+	}
 	
 	// Calculated values
 	$: prizePerWinner = distributionAmount / MAX_DRAWS;
@@ -149,10 +158,11 @@
 			drawActions.startRound(currentDrawData);
 			
 			// Load existing winners
+			let existingWinners: any[] = [];
 			if (dashboardData.latestWinners) {
 				console.log('🏆 Raw winners data from dashboard:', dashboardData.latestWinners);
 				
-				const existingWinners = dashboardData.latestWinners
+				existingWinners = dashboardData.latestWinners
 					.filter((w: any) => w.draw?.draw_number === currentDrawData.draw_number)
 					.map((w: any) => {
 						console.log('🎯 Processing winner:', w);
@@ -184,17 +194,14 @@
 			
 			// Restore stage from database if available
 			const savedStage = currentDrawData.current_stage || currentDrawData.currentStage;
-			const savedDrawNumber = currentDrawData.current_draw_number || currentDrawData.currentDrawNumber || 1;
 			
 			if (savedStage && savedStage !== 'IDLE') {
-				console.log(`🔄 Recovering to stage: ${savedStage}, draw: ${savedDrawNumber}`);
+				console.log(`🔄 Recovering to stage: ${savedStage}`);
 				drawActions.goToStage(savedStage);
 				
-				// Update current draw number if needed
-				drawState.update(state => ({
-					...state,
-					currentDraw: savedDrawNumber
-				}));
+				// Draw number will be calculated reactively from winners count
+				// Don't override it here to prevent double-increments
+				console.log(`📊 Draw number will be calculated from ${existingWinners.length} winners`);
 			} else {
 				// Determine current stage based on progress
 				const winnerCount = dashboardData.latestWinners?.filter((w: any) => w.drawNumber === currentDrawData.drawNumber)?.length || 0;
@@ -672,6 +679,60 @@
 		}
 	}
 	
+	// Reset function with proper cleanup
+	async function resetGameShow() {
+		try {
+			console.log('🔄 Starting game show reset...');
+			
+			// Set loading state to prevent component rendering during reset
+			isLoading = true;
+			
+			// First, stop the auto-progression subscription to prevent errors during reset
+			if (unsubscribeAutoProgression) {
+				unsubscribeAutoProgression();
+				unsubscribeAutoProgression = null;
+			}
+			
+			// Wait for loading state to take effect and components to stop rendering
+			await new Promise(resolve => setTimeout(resolve, 50));
+			
+			// Clear the current draw ID
+			setCurrentDrawId('');
+			
+			// Reset all local state variables
+			currentDrawData = null;
+			allHolders = [];
+			error = '';
+			currentCandidates = [];
+			animalMappings = [];
+			roundStatus = 'idle';
+			currentSpin = 0;
+			currentWinnerAnimal = '';
+			eligibleHoldersCount = 0;
+			
+			// Reset the draw state store completely
+			drawActions.reset();
+			
+			// Wait a moment to ensure all reactive updates complete
+			await new Promise(resolve => setTimeout(resolve, 100));
+			
+			// Restart auto-progression with fresh subscription
+			unsubscribeAutoProgression = startAutoProgression();
+			
+			// Turn off loading state
+			isLoading = false;
+			
+			console.log('✅ Game show reset successfully');
+		} catch (error) {
+			console.error('❌ Error resetting game show:', error);
+			isLoading = false;
+			// Ensure auto-progression is restarted even on error
+			if (!unsubscribeAutoProgression) {
+				unsubscribeAutoProgression = startAutoProgression();
+			}
+		}
+	}
+	
 	// Reactive calculations already defined above
 </script>
 <svelte:head>
@@ -681,7 +742,13 @@
 <AdminLayout title="🎪 CRX7 Game Show" description="Experience the lottery like never before" {user}>
 	
 	<!-- Stage-based Game Show Interface -->
-	{#if currentStageValue === 'IDLE'}
+	{#if isLoading}
+		<!-- Loading/Reset State -->
+		<div class="flex flex-col items-center justify-center min-h-[400px]">
+			<Icon icon="mdi:loading" class="w-16 h-16 text-orange-600 animate-spin mb-4" />
+			<h2 class="text-2xl font-bold text-orange-600">Resetting Game Show...</h2>
+		</div>
+	{:else if !currentStageValue || currentStageValue === 'IDLE'}
 		<!-- Not Started State -->
 		<div class="text-center py-16">
 			<div class="max-w-2xl mx-auto">
@@ -737,9 +804,9 @@
 	{:else if currentStageValue === 'DRAW_PREP'}
 		<!-- Draw Preparation Stage -->
 		<DrawPreparation 
-			drawNumber={currentDrawNumber}
+			drawNumber={$currentDraw || 1}
 			maxDraws={MAX_DRAWS}
-			prizeAmount={prizePerWinner}
+			prizeAmount={prizePerWinner || 0}
 			onGenerateContestants={generateContestantsForDraw}
 			autoProgress={false}
 		/>
@@ -749,7 +816,7 @@
 		<div class="max-w-none">
 			<div class="text-center mb-8">
 				<h1 class="text-5xl font-bold text-purple-600 mb-4">
-					🎯 DRAW {currentDrawNumber} - SPINNING NOW! 🎯
+					🎯 DRAW {$currentDraw} - SPINNING NOW! 🎯
 				</h1>
 				<div class="text-xl text-purple-700">
 					Finding our lucky winner from {currentContestants.length} brave contestants...
@@ -777,13 +844,13 @@
 			/>
 		{/if}
 		
-	{:else if currentStageValue === 'INTERMISSION'}
+	{:else if currentStageValue === 'INTERMISSION' && selectedWinners}
 		<!-- Intermission Progress -->
 		<IntermissionProgress 
-			winners={selectedWinners}
-			remainingDraws={remainingDraws}
-			totalPrizeRemaining={totalPrizeRemaining}
-			eligibleHoldersRemaining={eligibleHoldersRemaining}
+			winners={selectedWinners || []}
+			remainingDraws={remainingDraws || 0}
+			totalPrizeRemaining={totalPrizeRemaining || 0}
+			eligibleHoldersRemaining={eligibleHoldersRemaining || 0}
 			autoProgress={false}
 		/>
 		
@@ -856,7 +923,7 @@
 						</Button>
 					{/if}
 					
-					<Button variant="outline" size="sm" on:click={() => drawActions.reset()}>
+					<Button variant="outline" size="sm" on:click={resetGameShow}>
 						<Icon icon="mdi:stop" class="w-4 h-4 mr-1" />
 						Reset
 					</Button>

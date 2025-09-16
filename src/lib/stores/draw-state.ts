@@ -81,6 +81,12 @@ export const drawActions = {
   // Move to next stage
   nextStage: () => {
     drawState.update(state => {
+      // Safety check: ensure state and stage are valid
+      if (!state || !state.stage) {
+        console.warn('⚠️ Invalid state in nextStage, resetting to IDLE');
+        return { ...defaultState, stage: 'IDLE' as DrawStage };
+      }
+      
       let nextStage: DrawStage = state.stage;
       
       switch (state.stage) {
@@ -98,14 +104,19 @@ export const drawActions = {
           nextStage = state.selectedWinners.length < state.maxDraws ? 'INTERMISSION' : 'ROUND_COMPLETE';
           break;
         case 'INTERMISSION':
-          nextStage = 'DRAW_PREP';
+          // If all draws are complete, go to ROUND_COMPLETE, otherwise continue to next draw
+          nextStage = state.selectedWinners.length >= state.maxDraws ? 'ROUND_COMPLETE' : 'DRAW_PREP';
           break;
         case 'ROUND_COMPLETE':
           nextStage = 'DISTRIBUTION';
           break;
+        default:
+          console.warn(`⚠️ Unknown stage: ${state.stage}, staying in current stage`);
+          nextStage = state.stage;
       }
 
-      const newDrawNumber = nextStage === 'DRAW_PREP' && state.stage === 'INTERMISSION' 
+      // Only increment draw number when transitioning from INTERMISSION to DRAW_PREP
+      const newDrawNumber = (nextStage === 'DRAW_PREP' && state.stage === 'INTERMISSION') 
         ? state.currentDraw + 1 
         : state.currentDraw;
         
@@ -163,7 +174,11 @@ export const drawActions = {
 
   // Reset to idle
   reset: () => {
-    drawState.set(defaultState);
+    // Set to a safe intermediate state first to prevent subscription errors
+    drawState.update(() => ({
+      ...defaultState,
+      stage: 'IDLE' as DrawStage, // Explicitly set to valid stage
+    }));
   },
 
   // Manual stage override (for admin controls)
@@ -200,7 +215,17 @@ export function startAutoProgression() {
   let unsubscribe: (() => void) | null = null;
   
   unsubscribe = drawState.subscribe(state => {
-    const config = stageConfig[state.stage];
+    // Safety check: ensure stage exists and is valid
+    if (!state?.stage || typeof state.stage !== 'string') {
+      return;
+    }
+    
+    const config = stageConfig[state.stage as DrawStage];
+    
+    // Safety check: ensure config exists and has autoProgress property
+    if (!config || typeof config.autoProgress !== 'boolean') {
+      return;
+    }
     
     if (config.autoProgress && state.autoProgressEnabled && state.stageStartTime) {
       const elapsed = Date.now() - state.stageStartTime;

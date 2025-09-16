@@ -9,8 +9,13 @@
     address: string;
     animal: string;
     prizeAmount: number;
+  } = {
+    drawNumber: 1,
+    address: '',
+    animal: 'Unknown',
+    prizeAmount: 0
   };
-  export let drawNumber: number;
+  export let drawNumber: number = 1;
   export let autoProgress: boolean = true;
   
   let showConfetti = false;
