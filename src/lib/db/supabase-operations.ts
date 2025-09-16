@@ -180,15 +180,39 @@ export async function addWinners(drawId: string, winners: Array<{
   prizeAmount: string;
   position: number;
 }>) {
-  const winnerData = winners.map(w => ({
-    id: crypto.randomUUID(),
-    draw_id: drawId,
-    participant_id: w.participantId,
-    wallet_address: w.walletAddress,
-    prize_amount: w.prizeAmount,
-    position: w.position,
-    created_at: new Date().toISOString(),
-  }));
+  // Prepare winner data, resolving participant IDs if needed
+  const winnerData = [];
+  
+  for (const winner of winners) {
+    let participantId = winner.participantId;
+    
+    // If participantId is empty, find it by wallet address
+    if (!participantId || participantId.trim() === '') {
+      const { data: participant, error: participantError } = await supabase
+        .from('participant')
+        .select('id')
+        .eq('draw_id', drawId)
+        .eq('wallet_address', winner.walletAddress)
+        .single();
+        
+      if (participantError) {
+        console.error('Error finding participant:', participantError);
+        throw new Error(`Participant not found for wallet: ${winner.walletAddress}`);
+      }
+      
+      participantId = participant.id;
+    }
+    
+    winnerData.push({
+      id: crypto.randomUUID(),
+      draw_id: drawId,
+      participant_id: participantId,
+      wallet_address: winner.walletAddress,
+      prize_amount: winner.prizeAmount,
+      position: winner.position,
+      created_at: new Date().toISOString(),
+    });
+  }
   
   const { data, error } = await supabase
     .from('winner')
