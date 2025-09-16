@@ -3,6 +3,7 @@
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
   import { gameRoundActions, contestants } from '$lib/stores/game-round';
+  import RevealOrchestrator from './RevealOrchestrator.svelte';
   import type { AnimalMapping } from '$lib/utils/animal-mapping';
   
   export let drawNumber: number = 1;
@@ -10,79 +11,72 @@
   export let prizeAmount: number = 0;
   export let onGenerateContestants: () => Promise<void>;
   export let autoProgress: boolean = false;
+  export let eligibleHoldersCount: number = 0;
   
-  let loading = true;
-  let revealedContestants: AnimalMapping[] = [];
-  let revealIndex = 0;
+  let revealPhase: 'generating' | 'revealing' | 'complete' = 'generating';
+  let generatedContestants: AnimalMapping[] = [];
   
   $: progressPercentage = (drawNumber / maxDraws) * 100;
   
   onMount(() => {
     console.log('🎯 DrawPreparation: onMount() called, contestants:', $contestants.length);
-    // Only generate contestants if we don't have any yet
-    if ($contestants.length === 0) {
-      console.log('🎯 DrawPreparation: No contestants found, generating...');
-      generateAndRevealContestants();
+    
+    // Check if we already have contestants
+    if ($contestants.length > 0) {
+      console.log('🎯 DrawPreparation: Contestants already exist, starting animated reveal');
+      generatedContestants = $contestants;
+      revealPhase = 'revealing';
     } else {
-      console.log('🎯 DrawPreparation: Contestants already exist, skipping generation');
-      loading = false;
-      revealedContestants = $contestants;
+      console.log('🎯 DrawPreparation: No contestants found, generating...');
+      generateContestants();
     }
   });
   
-  async function generateAndRevealContestants() {
-    loading = true;
-    revealedContestants = [];
-    revealIndex = 0;
+  async function generateContestants() {
+    revealPhase = 'generating';
     
     try {
-      // Generate contestants via parent component
+      console.log('🎯 DrawPreparation: Generating contestants...');
       await onGenerateContestants();
       
-      // Start revealing contestants one by one
-      revealContestants();
+      // Get the generated contestants
+      generatedContestants = $contestants;
+      
+      if (generatedContestants.length > 0) {
+        console.log('🎯 DrawPreparation: Contestants generated, starting animated reveal');
+        console.log('🎯 Generated contestants:', generatedContestants);
+        revealPhase = 'revealing';
+      } else {
+        console.error('🎯 DrawPreparation: No contestants were generated');
+        console.error('🎯 Store contestants:', $contestants);
+        gameRoundActions.setError('Failed to generate contestants');
+      }
     } catch (error) {
-      console.error('Error generating contestants:', error);
+      console.error('🎯 DrawPreparation: Error generating contestants:', error);
       gameRoundActions.setError('Failed to generate contestants');
     }
   }
   
-  function revealContestants() {
-    const allContestants = $contestants;
+  function handleRevealComplete() {
+    console.log('🎯 DrawPreparation: Animated reveal sequence complete');
+    revealPhase = 'complete';
     
-    if (allContestants.length === 0) {
-      loading = false;
-      return;
+    // Auto progress if enabled
+    if (autoProgress) {
+      setTimeout(() => {
+        gameRoundActions.advanceStage();
+      }, 1000);
     }
-    
-    const revealNext = () => {
-      if (revealIndex < allContestants.length) {
-        revealedContestants = [...revealedContestants, allContestants[revealIndex]];
-        revealIndex++;
-        
-        // Reveal next contestant after delay
-        setTimeout(revealNext, 300);
-      } else {
-        loading = false;
-        
-        // Auto progress if enabled
-        if (autoProgress) {
-          setTimeout(() => {
-            gameRoundActions.advanceStage();
-          }, 1500);
-        }
-      }
-    };
-    
-    revealNext();
   }
   
   function proceedToSpin() {
+    console.log('🎯 DrawPreparation: Proceeding to spin wheel');
     gameRoundActions.advanceStage();
   }
   
   function retryGeneration() {
-    generateAndRevealContestants();
+    console.log('🎯 DrawPreparation: Retrying contestant generation');
+    generateContestants();
   }
 </script>
 
@@ -112,76 +106,35 @@
     </div>
   </div>
   
-  {#if loading}
-    <!-- Contestant Generation -->
-    <div class="w-full max-w-2xl">
-      <div class="text-center mb-6">
-        <Icon icon="mdi:account-search" class="w-16 h-16 mx-auto text-purple-600 animate-pulse mb-4" />
-        <h2 class="text-2xl font-bold text-purple-600 mb-2">
-          🔄 Selecting Contestants...
-        </h2>
-        <p class="text-gray-600">
-          Randomly choosing 7 lucky token holders from the blockchain
-        </p>
-      </div>
-      
-      <!-- Contestant Reveal Animation -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {#each Array(7) as _, index}
-          <div class="bg-white rounded-lg p-4 border-2 {revealedContestants[index] ? 'border-purple-300 shadow-lg' : 'border-gray-200'} transition-all duration-300">
-            {#if revealedContestants[index]}
-              <!-- Revealed Contestant -->
-              <div class="text-center animate-bounce">
-                <div class="text-4xl mb-2">{revealedContestants[index].animal.emoji}</div>
-                <div class="font-bold text-purple-800 text-lg">
-                  {revealedContestants[index].animal.name}
-                </div>
-                <div class="text-xs text-gray-600 mt-1">
-                  {revealedContestants[index].walletAddress.slice(0, 6)}...{revealedContestants[index].walletAddress.slice(-4)}
-                </div>
-              </div>
-            {:else if index === revealIndex}
-              <!-- Currently Revealing -->
-              <div class="text-center">
-                <Icon icon="mdi:loading" class="w-12 h-12 mx-auto text-purple-600 animate-spin mb-2" />
-                <div class="text-gray-500">Selecting...</div>
-              </div>
-            {:else}
-              <!-- Not Yet Revealed -->
-              <div class="text-center opacity-50">
-                <div class="w-12 h-12 mx-auto mb-2 bg-gray-200 rounded-full flex items-center justify-center">
-                  <Icon icon="mdi:account-question" class="w-6 h-6 text-gray-400" />
-                </div>
-                <div class="text-gray-400 text-sm">Waiting...</div>
-              </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
+  {#if revealPhase === 'generating'}
+    <!-- Simple Loading State -->
+    <div class="text-center">
+      <Icon icon="mdi:loading" class="w-16 h-16 mx-auto text-purple-600 animate-spin mb-4" />
+      <h2 class="text-2xl font-bold text-purple-600 mb-2">
+        Preparing Contestants...
+      </h2>
+      <p class="text-gray-600">
+        Fetching eligible token holders from the blockchain
+      </p>
     </div>
-  {:else}
+    
+  {:else if revealPhase === 'revealing'}
+    <!-- Animated Reveal Sequence -->
+    <RevealOrchestrator 
+      contestants={generatedContestants}
+      {eligibleHoldersCount}
+      onComplete={handleRevealComplete}
+    />
+    
+  {:else if revealPhase === 'complete'}
     <!-- Ready to Spin -->
     <div class="text-center w-full max-w-2xl">
-      <h2 class="text-3xl font-bold text-green-600 mb-4">
-        🎯 Contestants Ready!
+      <h2 class="text-3xl font-bold text-green-600 mb-6">
+        🎯 Ready to Spin the Wheel! 🎯
       </h2>
       
-      <!-- Final Contestants Display -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-8">
-        {#each revealedContestants as contestant}
-          <div class="bg-white rounded-lg p-3 border-2 border-purple-300 shadow-lg hover:shadow-xl transition-shadow">
-            <div class="text-center">
-              <div class="text-3xl mb-1">{contestant.animal.emoji}</div>
-              <div class="font-bold text-purple-800 text-sm">
-                {contestant.animal.name}
-              </div>
-            </div>
-          </div>
-        {/each}
-      </div>
-      
-      <p class="text-lg text-gray-700 mb-6">
-        7 brave contestants enter the wheel. Only 1 will emerge victorious!
+      <p class="text-lg text-gray-700 mb-8">
+        All contestants have been selected and are ready for the draw!
       </p>
       
       {#if !autoProgress}

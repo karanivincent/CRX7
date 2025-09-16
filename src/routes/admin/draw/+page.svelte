@@ -362,6 +362,7 @@
 			maxDraws={MAX_DRAWS}
 			prizeAmount={prizePerWinner}
 			onGenerateContestants={generateContestantsForDraw}
+			eligibleHoldersCount={$gameRound.eligibleHoldersCount}
 			autoProgress={false}
 		/>
 		
