@@ -134,6 +134,15 @@ export async function getNextDrawNumber(): Promise<number> {
 }
 
 // Participant Operations
+export async function clearDrawWinners(drawId: string) {
+  const { error } = await supabase
+    .from('winner')
+    .delete()
+    .eq('draw_id', drawId);
+    
+  if (error) throw error;
+}
+
 export async function clearDrawParticipants(drawId: string) {
   const { error } = await supabase
     .from('participant')

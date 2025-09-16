@@ -10,6 +10,7 @@ import {
   addParticipants,
   getDrawParticipants,
   clearDrawParticipants,
+  clearDrawWinners,
   addWinners,
   getDrawWinners,
   getLatestWinners,
@@ -53,7 +54,10 @@ export async function cancelDraw(drawId: string) {
 
 // Participant management
 export async function setupDrawParticipants(drawId: string, participants: AnimalMapping[]) {
-  // Clear existing participants first
+  // Clear existing winners first (to avoid foreign key constraint violations)
+  await clearDrawWinners(drawId);
+  
+  // Clear existing participants second
   await clearDrawParticipants(drawId);
   
   // Add new participants
