@@ -302,6 +302,14 @@
    - ✅ **Accurate Distribution:** Proper 50/40/10 split calculation from live vault data
    - ✅ **Error Handling:** Graceful fallback when vault balance fetch fails
 
+8. **✅ NEW: Manual Control Animated Contestant Reveal System (Sept 16)**
+   - ✅ **Multi-Phase Reveal System:** ContestantHunt → Individual Reveals → Final Roster → Spinning Wheel
+   - ✅ **Host-Controlled Pacing:** Manual buttons for complete control during live streaming
+   - ✅ **Engaging Animations:** Blockchain scanning, contestant selection (1-7), dramatic reveals
+   - ✅ **Prominent Wallet Display:** Clear wallet addresses with copy functionality for viewer verification
+   - ✅ **Streamlined Flow:** Removed unnecessary celebration steps based on user feedback
+   - ✅ **Professional Timing:** 800-1400ms per contestant selection for suspenseful effect
+
 ### 🟡 IMMEDIATE NEXT PRIORITIES
 1. **Frontend-Database Integration** (1 day)
    - ✅ Database schema complete
@@ -342,6 +350,7 @@
 - ✅ **Comprehensive test coverage (267 tests - 100% passing)**
 - ✅ **Stable Svelte 4 foundation for deployment**
 - ✅ **Live vault balance integration with real-time refresh**
+- ✅ **Manual control animated contestant reveal system for live streaming**
 
 **Time to Production Estimate**: 2-3 days remaining (reduced due to stability improvements)
 
@@ -760,9 +769,10 @@
 | Sept 15, 2025 | v0.2.0 | Database integration complete: Schema, operations, queries, and tests implemented (207 tests passing) |
 | Sept 15, 2025 | v0.3.0 | **SSR compatibility & real blockchain data integration:** Svelte 4 stable, 267 tests passing, 8,600+ real token holders, production-ready |
 | Sept 15, 2025 | v0.3.1 | **Live vault balance integration:** Replaced placeholder data with real-time SOL/WSOL vault tracking, winner pool display, dynamic refresh |
+| Sept 16, 2025 | v0.4.0 | **Manual control animated contestant reveal system:** Complete reveal orchestration with host controls for live streaming, streamlined flow, professional timing |
 
 ---
 
-*Last Updated: September 15, 2025*  
+*Last Updated: September 16, 2025*  
 *Next Review: September 17, 2025*  
 *Document Owner: Vincent*

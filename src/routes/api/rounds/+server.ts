@@ -183,21 +183,47 @@ export const GET: RequestHandler = async ({ url }) => {
       }
 
       case 'history': {
+        // Get completed rounds with winner counts and pagination
+        const page = parseInt(url.searchParams.get('page') || '1');
+        const limit = parseInt(url.searchParams.get('limit') || '20');
+        const offset = (page - 1) * limit;
+
         // Get completed rounds with winner counts
         const { data: completedDraws, error } = await supabase
           .from('draw')
           .select(`
-            *,
-            winner!inner(count)
+            id,
+            draw_number,
+            scheduled_at,
+            executed_at,
+            completed_at,
+            total_prize_pool,
+            round_duration_ms,
+            winner(count)
           `)
           .eq('status', 'completed')
-          .order('completed_at', { ascending: false });
+          .order('completed_at', { ascending: false })
+          .range(offset, offset + limit - 1);
         
         if (error) throw error;
+
+        // Get total count for pagination
+        const { count, error: countError } = await supabase
+          .from('draw')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed');
+        
+        if (countError) throw countError;
         
         return json({ 
           success: true, 
-          completedDraws: completedDraws || []
+          draws: completedDraws || [],
+          pagination: {
+            page,
+            limit,
+            total: count || 0,
+            totalPages: Math.ceil((count || 0) / limit)
+          }
         });
       }
 
@@ -231,6 +257,96 @@ export const GET: RequestHandler = async ({ url }) => {
           latestDraw: {
             ...latestDraw,
             winners: winners || []
+          }
+        });
+      }
+
+      case 'details': {
+        // Get specific round details with winners and participants
+        const roundId = url.searchParams.get('id');
+        if (!roundId) {
+          return json({ error: 'Round ID is required' }, { status: 400 });
+        }
+
+        // Get round info
+        const { data: round, error: roundError } = await supabase
+          .from('draw')
+          .select('*')
+          .eq('id', roundId)
+          .single();
+        
+        if (roundError) throw roundError;
+        if (!round) {
+          return json({ error: 'Round not found' }, { status: 404 });
+        }
+
+        // Get winners
+        const { data: winners, error: winnersError } = await supabase
+          .from('winner')
+          .select('*')
+          .eq('draw_id', roundId)
+          .order('sequence_number', { ascending: true });
+        
+        if (winnersError) throw winnersError;
+
+        // Get participants
+        const { data: participants, error: participantsError } = await supabase
+          .from('participant')
+          .select('*')
+          .eq('draw_id', roundId)
+          .order('joined_at', { ascending: true });
+        
+        if (participantsError) throw participantsError;
+
+        return json({ 
+          success: true, 
+          round: {
+            ...round,
+            winners: winners || [],
+            participants: participants || []
+          }
+        });
+      }
+
+      case 'stats': {
+        // Get aggregate statistics
+        const { data: totalStats, error: statsError } = await supabase
+          .from('draw')
+          .select('total_prize_pool, winner!inner(prize_amount)')
+          .eq('status', 'completed');
+        
+        if (statsError) throw statsError;
+
+        // Calculate statistics
+        let totalDistributed = 0;
+        let biggestWin = 0;
+        let totalWinners = 0;
+        let totalRounds = 0;
+
+        (totalStats || []).forEach(draw => {
+          if (draw.total_prize_pool) {
+            totalDistributed += parseFloat(draw.total_prize_pool);
+            totalRounds++;
+          }
+          if (Array.isArray(draw.winner)) {
+            draw.winner.forEach((winner: any) => {
+              totalWinners++;
+              const prizeAmount = parseFloat(winner.prize_amount || '0');
+              if (prizeAmount > biggestWin) {
+                biggestWin = prizeAmount;
+              }
+            });
+          }
+        });
+
+        return json({ 
+          success: true, 
+          stats: {
+            totalDistributed,
+            biggestWin,
+            totalWinners,
+            totalRounds,
+            averagePerWinner: totalWinners > 0 ? totalDistributed / totalWinners : 0
           }
         });
       }

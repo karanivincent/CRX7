@@ -209,6 +209,26 @@
 						Study the Playbook 📚<span aria-hidden="true" class="ml-2">→</span>
 					</Button>
 				</div>
+				
+				<!-- History Links -->
+				<div class="mt-8 flex flex-wrap justify-center gap-4">
+					<Button 
+						variant="ghost" 
+						href="/past-draws" 
+						size="sm"
+						class="text-orange-200 hover:text-white hover:bg-orange-700 border border-orange-300"
+					>
+						📊 View Draw History
+					</Button>
+					<Button 
+						variant="ghost" 
+						href="/winners" 
+						size="sm"
+						class="text-orange-200 hover:text-white hover:bg-orange-700 border border-orange-300"
+					>
+						🏆 See All Winners
+					</Button>
+				</div>
 				<div class="mt-8 flex flex-wrap justify-center gap-4 text-sm text-orange-200">
 					<span class="flex items-center gap-1">
 						<span class="text-green-300">✅</span>
