@@ -2,13 +2,14 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import Icon from '@iconify/svelte';
-	import { getTokenDisplay } from '$lib/config/client';
+	import { getTokenDisplay, getTokenSymbol } from '$lib/config/client';
 	import { onMount } from 'svelte';
 	import HistoryFilters from '$lib/components/history/HistoryFilters.svelte';
 	import StatsOverview from '$lib/components/history/StatsOverview.svelte';
 	
 	// Cache the config values
 	const tokenDisplay = getTokenDisplay();
+	const tokenSymbol = getTokenSymbol();
 	
 	let winners: any[] = [];
 	let recentWinners: any[] = [];
@@ -518,14 +519,14 @@
 											<td class="px-6 py-4 whitespace-nowrap">
 												{#if activeTab === 'leaderboard'}
 													<div class="font-bold text-green-600">
-														{parseFloat(winner.total_won || 0).toFixed(3)} {tokenDisplay.symbol}
+														{parseFloat(winner.total_won || 0).toFixed(3)} SOL
 													</div>
 													<div class="text-xs text-gray-500">
 														{winner.wins_count} win{winner.wins_count > 1 ? 's' : ''}
 													</div>
 												{:else}
 													<div class="font-bold text-green-600">
-														{parseFloat(winner.prize_amount || 0).toFixed(3)} {tokenDisplay.symbol}
+														{parseFloat(winner.prize_amount || 0).toFixed(3)} SOL
 													</div>
 													<div class="text-xs text-gray-500">
 														≈ ${(parseFloat(winner.prize_amount || 0) * 150).toFixed(2)}
