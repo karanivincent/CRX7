@@ -198,12 +198,28 @@ export const GET: RequestHandler = async ({ url }) => {
             executed_at,
             completed_at,
             total_prize_pool,
-            round_duration_ms,
-            winner(count)
+            round_duration_ms
           `)
           .eq('status', 'completed')
           .order('completed_at', { ascending: false })
           .range(offset, offset + limit - 1);
+        
+        if (error) throw error;
+        
+        // Get winner counts separately for each draw
+        const drawsWithCounts = await Promise.all(
+          (completedDraws || []).map(async (draw) => {
+            const { count } = await supabase
+              .from('winner')
+              .select('*', { count: 'exact', head: true })
+              .eq('draw_id', draw.id);
+            
+            return {
+              ...draw,
+              winner: [{ count: count || 0 }]
+            };
+          })
+        );
         
         if (error) throw error;
 

@@ -29,6 +29,8 @@
 	});
 	
 	async function loadRounds(reset = false) {
+		if (typeof window === 'undefined') return; // Skip on server-side
+		
 		loading = true;
 		error = '';
 		

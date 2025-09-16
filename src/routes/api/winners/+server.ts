@@ -64,21 +64,46 @@ export const GET: RequestHandler = async ({ url }) => {
         // Get top winners by total amount won
         const limit = parseInt(url.searchParams.get('limit') || '10');
 
-        const { data: topWinners, error } = await supabase
+        // For now, let's use a simpler approach since Supabase doesn't support aggregation well
+        const { data: allWinners, error } = await supabase
           .from('winner')
           .select(`
             wallet_address,
             animal_name,
             animal_emoji,
-            sum(prize_amount) as total_won,
-            count(*) as wins_count,
-            max(won_at) as last_win
+            prize_amount,
+            won_at
           `)
-          .group(['wallet_address', 'animal_name', 'animal_emoji'])
-          .order('total_won', { ascending: false })
-          .limit(limit);
+          .order('prize_amount', { ascending: false })
+          .limit(limit * 3); // Get more data to group manually
         
         if (error) throw error;
+        
+        // Group by wallet address manually
+        const groupedWinners = new Map();
+        (allWinners || []).forEach(winner => {
+          const key = winner.wallet_address;
+          if (!groupedWinners.has(key)) {
+            groupedWinners.set(key, {
+              wallet_address: winner.wallet_address,
+              animal_name: winner.animal_name,
+              animal_emoji: winner.animal_emoji,
+              total_won: 0,
+              wins_count: 0,
+              last_win: winner.won_at
+            });
+          }
+          const group = groupedWinners.get(key);
+          group.total_won += parseFloat(winner.prize_amount);
+          group.wins_count += 1;
+          if (new Date(winner.won_at) > new Date(group.last_win)) {
+            group.last_win = winner.won_at;
+          }
+        });
+        
+        const topWinners = Array.from(groupedWinners.values())
+          .sort((a, b) => b.total_won - a.total_won)
+          .slice(0, limit);
         
         return json({ 
           success: true, 

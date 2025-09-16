@@ -39,6 +39,8 @@
 	});
 	
 	async function loadWinners(reset = false) {
+		if (typeof window === 'undefined') return; // Skip on server-side
+		
 		loading = true;
 		error = '';
 		
@@ -80,6 +82,7 @@
 	}
 	
 	async function loadRecentWinners() {
+		if (typeof window === 'undefined') return; // Skip on server-side
 		try {
 			const response = await fetch('/api/winners?action=recent&limit=5');
 			const data = await response.json();
@@ -92,6 +95,7 @@
 	}
 	
 	async function loadBiggestWins() {
+		if (typeof window === 'undefined') return; // Skip on server-side
 		try {
 			const response = await fetch('/api/winners?action=biggest&limit=10');
 			const data = await response.json();
@@ -104,6 +108,7 @@
 	}
 	
 	async function loadLeaderboard() {
+		if (typeof window === 'undefined') return; // Skip on server-side
 		try {
 			const response = await fetch('/api/winners?action=leaderboard&limit=10');
 			const data = await response.json();

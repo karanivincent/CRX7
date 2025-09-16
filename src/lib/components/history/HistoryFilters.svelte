@@ -1,6 +1,6 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui/button';
-  import { Input } from '$lib/components/ui/input';
+  import Input from '$lib/components/ui/input/input.svelte';
   import Icon from '@iconify/svelte';
   
   export let searchTerm = '';
@@ -29,8 +29,12 @@
     showAdvanced = !showAdvanced;
   }
   
-  // Reactive updates
-  $: sortBy, sortOrder, dateFrom, dateTo, minPrize, maxPrize, onFiltersChange();
+  // Reactive updates - skip on server-side rendering
+  $: {
+    if (typeof window !== 'undefined' && typeof onFiltersChange === 'function') {
+      onFiltersChange();
+    }
+  }
 </script>
 
 <div class="bg-white rounded-lg border border-gray-200 p-4 mb-6 shadow-sm">
