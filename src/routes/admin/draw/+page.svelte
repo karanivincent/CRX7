@@ -384,7 +384,7 @@
 					onSpinComplete={handleSpinComplete}
 					size="xlarge"
 					showLegend={false}
-					autoSpin={true}
+					autoSpin={false}
 				/>
 			</div>
 		</div>
