@@ -24,8 +24,16 @@
     }, 500);
   });
   
-  function continueToNextDraw() {
+  async function continueToNextDraw() {
+    console.log('🎯 Next Round button clicked - calling drawActions.nextStage()');
     drawActions.nextStage();
+    console.log('✅ drawActions.nextStage() completed');
+    
+    // Force a page refresh to ensure UI updates with the new stage
+    // This is a temporary solution to ensure the stage transition is visible
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
   }
   
   // Extract animal emoji and name from winner.animal string
@@ -61,9 +69,17 @@
       {/each}
     </div>
     
-    <div class="text-xl text-blue-700 font-semibold">
+    <div class="text-xl text-blue-700 font-semibold mb-4">
       {winners.length} of 7 draws complete
     </div>
+
+    <!-- Next Round Button in Progress Area -->
+    {#if remainingDraws > 0 && !autoProgress}
+      <Button on:click={continueToNextDraw} variant="default" size="lg" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3">
+        <Icon icon="mdi:arrow-right-circle" class="mr-2 h-5 w-5" />
+        Next Round
+      </Button>
+    {/if}
   </div>
   
   {#if showStats}

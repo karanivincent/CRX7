@@ -80,7 +80,10 @@ export const drawActions = {
 
   // Move to next stage
   nextStage: () => {
+    console.log('🔄 nextStage() called');
     drawState.update(state => {
+      console.log(`📊 Current state - Stage: ${state.stage}, Draw: ${state.currentDraw}, Winners: ${state.selectedWinners.length}`);
+      
       let nextStage: DrawStage = state.stage;
       
       switch (state.stage) {
@@ -109,15 +112,20 @@ export const drawActions = {
         ? state.currentDraw + 1 
         : state.currentDraw;
         
+      console.log(`➡️  Transitioning from ${state.stage} to ${nextStage}, draw ${state.currentDraw} -> ${newDrawNumber}`);
+      
       // Auto-save stage to database
       saveStageToDatabase(nextStage, newDrawNumber);
       
-      return {
+      const newState = {
         ...state,
         stage: nextStage,
         currentDraw: newDrawNumber,
         stageStartTime: Date.now()
       };
+      
+      console.log(`✅ New state set - Stage: ${newState.stage}, Draw: ${newState.currentDraw}`);
+      return newState;
     });
   },
 
