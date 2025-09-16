@@ -53,7 +53,10 @@
 				if (reset) {
 					rounds = data.draws;
 				} else {
-					rounds = [...rounds, ...data.draws];
+					// Deduplicate rounds by ID to prevent duplicate key errors
+					const existingIds = new Set(rounds.map(r => r.id));
+					const newRounds = data.draws.filter(r => !existingIds.has(r.id));
+					rounds = [...rounds, ...newRounds];
 				}
 				
 				totalRounds = data.pagination.total;

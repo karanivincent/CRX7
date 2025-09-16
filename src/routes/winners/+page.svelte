@@ -4,7 +4,6 @@
 	import Icon from '@iconify/svelte';
 	import { getTokenDisplay } from '$lib/config/client';
 	import { onMount } from 'svelte';
-	import WinnerCard from '$lib/components/history/WinnerCard.svelte';
 	import HistoryFilters from '$lib/components/history/HistoryFilters.svelte';
 	import StatsOverview from '$lib/components/history/StatsOverview.svelte';
 	
@@ -20,6 +19,8 @@
 	let page = 1;
 	let hasMore = true;
 	let totalWinners = 0;
+	let totalPages = 1;
+	let pageSize = 20;
 	let activeTab = 'all'; // 'all', 'recent', 'biggest', 'leaderboard'
 	
 	// Filter state
@@ -65,10 +66,14 @@
 				if (reset) {
 					winners = data.winners;
 				} else {
-					winners = [...winners, ...data.winners];
+					// Deduplicate winners by ID to prevent duplicate key errors
+					const existingIds = new Set(winners.map(w => w.id));
+					const newWinners = data.winners.filter(w => !existingIds.has(w.id));
+					winners = [...winners, ...newWinners];
 				}
 				
 				totalWinners = data.pagination.total;
+				totalPages = data.pagination.totalPages;
 				hasMore = data.pagination.page < data.pagination.totalPages;
 			} else {
 				error = data.error || 'Failed to load winners';
@@ -127,8 +132,39 @@
 		}
 	}
 	
+	function goToPage(newPage: number) {
+		if (newPage >= 1 && newPage <= totalPages && newPage !== page && !loading) {
+			page = newPage;
+			loadWinners(true); // Always reset when going to a specific page
+		}
+	}
+	
+	function nextPage() {
+		if (page < totalPages) {
+			goToPage(page + 1);
+		}
+	}
+	
+	function prevPage() {
+		if (page > 1) {
+			goToPage(page - 1);
+		}
+	}
+	
 	function onFiltersChange() {
+		page = 1; // Reset to first page when filters change
 		loadWinners(true);
+	}
+	
+	function handleSort(field: string) {
+		if (sortBy === field) {
+			sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+		} else {
+			sortBy = field;
+			sortOrder = 'desc';
+		}
+		page = 1; // Reset to first page when sorting changes
+		loadWinners(true); // Reload data with new sorting
 	}
 	
 	function setActiveTab(tab: string) {
@@ -391,26 +427,241 @@
 						{/each}
 					</div>
 				{:else}
-					<!-- Regular Winners Grid -->
-					<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
-						{#each currentData as winner (winner.id || winner.wallet_address)}
-							<WinnerCard {winner} />
-						{/each}
+					<!-- Winners Table -->
+					<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-8">
+						<div class="overflow-x-auto">
+							<table class="w-full">
+								<thead class="bg-gray-50 border-b border-gray-200">
+									<tr>
+										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Winner
+										</th>
+										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Wallet Address
+										</th>
+										{#if activeTab === 'all'}
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+													on:click={() => handleSort('prize_amount')}>
+												<div class="flex items-center gap-1">
+													Prize Amount
+													{#if sortBy === 'prize_amount'}
+														<Icon icon={sortOrder === 'desc' ? 'mdi:chevron-down' : 'mdi:chevron-up'} class="w-4 h-4" />
+													{/if}
+												</div>
+											</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+													on:click={() => handleSort('draw_sequence')}>
+												<div class="flex items-center gap-1">
+													Draw #
+													{#if sortBy === 'draw_sequence'}
+														<Icon icon={sortOrder === 'desc' ? 'mdi:chevron-down' : 'mdi:chevron-up'} class="w-4 h-4" />
+													{/if}
+												</div>
+											</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors"
+													on:click={() => handleSort('won_at')}>
+												<div class="flex items-center gap-1">
+													Date Won
+													{#if sortBy === 'won_at'}
+														<Icon icon={sortOrder === 'desc' ? 'mdi:chevron-down' : 'mdi:chevron-up'} class="w-4 h-4" />
+													{/if}
+												</div>
+											</th>
+										{:else}
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+												Prize Amount
+											</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+												Draw #
+											</th>
+											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+												Date Won
+											</th>
+										{/if}
+										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Verify
+										</th>
+									</tr>
+								</thead>
+								<tbody class="bg-white divide-y divide-gray-200">
+									{#each currentData as winner (winner.id || winner.wallet_address)}
+										<tr class="hover:bg-gray-50 transition-colors">
+											<!-- Winner (Animal) -->
+											<td class="px-6 py-4 whitespace-nowrap">
+												<div class="flex items-center gap-3">
+													<span class="text-2xl">{winner.animal_emoji}</span>
+													<div>
+														<div class="font-semibold text-gray-900 uppercase text-sm">
+															{winner.animal_name}
+														</div>
+													</div>
+												</div>
+											</td>
+											
+											<!-- Wallet Address -->
+											<td class="px-6 py-4 whitespace-nowrap">
+												<div class="flex items-center gap-2">
+													<code class="font-mono text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+														{winner.wallet_address.slice(0, 6)}...{winner.wallet_address.slice(-6)}
+													</code>
+													<button
+														class="text-gray-400 hover:text-gray-600 transition-colors"
+														on:click={() => navigator.clipboard.writeText(winner.wallet_address)}
+														title="Copy full address"
+													>
+														<Icon icon="mdi:content-copy" class="w-4 h-4" />
+													</button>
+												</div>
+											</td>
+											
+											<!-- Prize Amount -->
+											<td class="px-6 py-4 whitespace-nowrap">
+												<div class="font-bold text-green-600">
+													{parseFloat(winner.prize_amount).toFixed(3)} {tokenDisplay.symbol}
+												</div>
+												<div class="text-xs text-gray-500">
+													≈ ${(parseFloat(winner.prize_amount) * 150).toFixed(2)}
+												</div>
+											</td>
+											
+											<!-- Draw Number -->
+											<td class="px-6 py-4 whitespace-nowrap">
+												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+													#{winner.draw?.draw_number || 'N/A'}
+												</span>
+											</td>
+											
+											<!-- Date Won -->
+											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+												{new Date(winner.won_at || winner.created_at).toLocaleDateString()}
+												<div class="text-xs text-gray-500">
+													{new Date(winner.won_at || winner.created_at).toLocaleTimeString()}
+												</div>
+											</td>
+											
+											<!-- Verify Actions -->
+											<td class="px-6 py-4 whitespace-nowrap">
+												<div class="flex items-center gap-2">
+													<!-- Solscan Link -->
+													<a 
+														href="https://solscan.io/account/{winner.wallet_address}"
+														target="_blank"
+														rel="noopener noreferrer"
+														class="text-blue-600 hover:text-blue-800 transition-colors"
+														title="View on Solscan"
+													>
+														<Icon icon="mdi:open-in-new" class="w-4 h-4" />
+													</a>
+													
+													<!-- Transaction Link (if available) -->
+													{#if winner.transaction_hash}
+														<a 
+															href="https://solscan.io/tx/{winner.transaction_hash}"
+															target="_blank"
+															rel="noopener noreferrer"
+															class="text-green-600 hover:text-green-800 transition-colors"
+															title="View transaction"
+														>
+															<Icon icon="mdi:check-circle" class="w-4 h-4" />
+														</a>
+													{:else}
+														<span class="text-gray-400" title="Transaction pending">
+															<Icon icon="mdi:clock" class="w-4 h-4" />
+														</span>
+													{/if}
+												</div>
+											</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
 					</div>
 				{/if}
 
-				<!-- Load More Button (only for 'all' tab) -->
-				{#if hasMore && !loading && activeTab === 'all'}
-					<div class="text-center">
-						<Button 
-							variant="outline" 
-							size="lg"
-							on:click={loadMore}
-							class="px-8 py-3"
-						>
-							<Icon icon="mdi:chevron-down" class="w-4 h-4 mr-2" />
-							Load More Winners
-						</Button>
+				<!-- Pagination Controls (only for 'all' tab) -->
+				{#if activeTab === 'all' && totalPages > 1}
+					<div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-b-lg">
+						<div class="flex flex-1 justify-between sm:hidden">
+							<!-- Mobile pagination -->
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={page <= 1 || loading}
+								on:click={prevPage}
+							>
+								Previous
+							</Button>
+							<span class="text-sm text-gray-700 self-center">
+								Page {page} of {totalPages}
+							</span>
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={page >= totalPages || loading}
+								on:click={nextPage}
+							>
+								Next
+							</Button>
+						</div>
+						<div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+							<div>
+								<p class="text-sm text-gray-700">
+									Showing
+									<span class="font-medium">{(page - 1) * pageSize + 1}</span>
+									to
+									<span class="font-medium">{Math.min(page * pageSize, totalWinners)}</span>
+									of
+									<span class="font-medium">{totalWinners}</span>
+									results
+								</p>
+							</div>
+							<div>
+								<nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+									<!-- Previous button -->
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={page <= 1 || loading}
+										on:click={prevPage}
+										class="rounded-l-md"
+									>
+										<Icon icon="mdi:chevron-left" class="w-4 h-4" />
+										<span class="sr-only">Previous</span>
+									</Button>
+									
+									<!-- Page numbers -->
+									{#each Array.from({length: Math.min(7, totalPages)}, (_, i) => {
+										if (totalPages <= 7) return i + 1;
+										if (page <= 4) return i + 1;
+										if (page > totalPages - 4) return totalPages - 6 + i;
+										return page - 3 + i;
+									}) as pageNum}
+										<Button
+											variant={pageNum === page ? "default" : "outline"}
+											size="sm"
+											disabled={loading}
+											on:click={() => goToPage(pageNum)}
+											class="text-sm"
+										>
+											{pageNum}
+										</Button>
+									{/each}
+									
+									<!-- Next button -->
+									<Button
+										variant="outline"
+										size="sm"
+										disabled={page >= totalPages || loading}
+										on:click={nextPage}
+										class="rounded-r-md"
+									>
+										<span class="sr-only">Next</span>
+										<Icon icon="mdi:chevron-right" class="w-4 h-4" />
+									</Button>
+								</nav>
+							</div>
+						</div>
 					</div>
 				{/if}
 
