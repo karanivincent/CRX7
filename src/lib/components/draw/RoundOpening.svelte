@@ -5,7 +5,7 @@
   import { gameRoundActions } from '$lib/stores/game-round';
   
   export let round: any;
-  export let vaultBalance: number;
+  export let vaultBalance: number = 0;
   export let eligibleHolders: number = 0;
   export let autoProgress: boolean = true;
   
@@ -13,8 +13,8 @@
   let progress = 0;
   let statusText = "Preparing the stage...";
   
-  const winnerPool = vaultBalance * 0.5;
-  const prizePerWinner = winnerPool / 7;
+  $: winnerPool = (vaultBalance || 0) * 0.5;
+  $: prizePerWinner = winnerPool / 7;
   
   const loadingMessages = [
     "Connecting to blockchain...",
@@ -67,7 +67,7 @@
     <div class="bg-white rounded-lg p-6 text-center border-2 border-green-200 shadow-lg">
       <div class="text-4xl mb-2">💰</div>
       <div class="text-sm text-gray-600 mb-1">Total Prize Pool</div>
-      <div class="text-3xl font-bold text-green-600">{winnerPool.toFixed(2)} SOL</div>
+      <div class="text-3xl font-bold text-green-600">{winnerPool?.toFixed(2) || '0.00'} SOL</div>
     </div>
     
     <div class="bg-white rounded-lg p-6 text-center border-2 border-blue-200 shadow-lg">
@@ -88,15 +88,15 @@
     <h3 class="text-xl font-bold text-center mb-4 text-gray-800">Prize Breakdown</h3>
     <div class="grid grid-cols-3 gap-4 text-center">
       <div>
-        <div class="text-2xl font-bold text-green-600">{prizePerWinner.toFixed(3)}</div>
+        <div class="text-2xl font-bold text-green-600">{prizePerWinner?.toFixed(3) || '0.000'}</div>
         <div class="text-sm text-gray-600">SOL per winner</div>
       </div>
       <div>
-        <div class="text-2xl font-bold text-blue-600">{(vaultBalance * 0.4).toFixed(2)}</div>
+        <div class="text-2xl font-bold text-blue-600">{((vaultBalance || 0) * 0.4).toFixed(2)}</div>
         <div class="text-sm text-gray-600">SOL to holdings</div>
       </div>
       <div>
-        <div class="text-2xl font-bold text-purple-600">{(vaultBalance * 0.1).toFixed(2)}</div>
+        <div class="text-2xl font-bold text-purple-600">{((vaultBalance || 0) * 0.1).toFixed(2)}</div>
         <div class="text-sm text-gray-600">SOL to charity</div>
       </div>
     </div>

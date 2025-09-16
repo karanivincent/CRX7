@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { getVaultInfo, getDetailedBalance } from '$lib/utils/solana-balance';
+import { getServerVaultInfo, getServerDetailedBalance } from '$lib/server/solana-server';
 import { tokenConfig } from '$lib/config/token';
 
 export const load = async ({ locals }) => {
@@ -13,8 +13,8 @@ export const load = async ({ locals }) => {
 	// Fetch initial vault data
 	let vaultData = null;
 	try {
-		const vaultInfo = await getVaultInfo(tokenConfig.rewardVault, true);
-		const detailedBalance = await getDetailedBalance(tokenConfig.rewardVault, true);
+		const vaultInfo = await getServerVaultInfo(tokenConfig.rewardVault, true);
+		const detailedBalance = await getServerDetailedBalance(tokenConfig.rewardVault, true);
 		
 		vaultData = {
 			balance: vaultInfo.balance,

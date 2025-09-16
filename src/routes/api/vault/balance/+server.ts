@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getVaultInfo, getDetailedBalance, checkSolanaConnection } from '$lib/utils/solana-balance';
+import { getServerVaultInfo, getServerDetailedBalance, checkServerSolanaConnection } from '$lib/server/solana-server';
 import { tokenConfig } from '$lib/config/token';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		console.log(`Using cache: ${useCache}`);
 
 		// First check if Solana connection is healthy
-		const connectionHealthy = await checkSolanaConnection();
+		const connectionHealthy = await checkServerSolanaConnection();
 		if (!connectionHealthy) {
 			return json(
 				{
@@ -26,8 +26,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 
 		// Get vault information and detailed balance breakdown
-		const vaultInfo = await getVaultInfo(tokenConfig.rewardVault, useCache);
-		const detailedBalance = await getDetailedBalance(tokenConfig.rewardVault, useCache);
+		const vaultInfo = await getServerVaultInfo(tokenConfig.rewardVault, useCache);
+		const detailedBalance = await getServerDetailedBalance(tokenConfig.rewardVault, useCache);
 
 		// Return comprehensive vault data
 		return json({
@@ -107,7 +107,7 @@ export const POST: RequestHandler = async () => {
 		console.log('Manual vault balance refresh requested');
 		
 		// Force refresh by bypassing cache
-		const vaultInfo = await getVaultInfo(tokenConfig.rewardVault, false);
+		const vaultInfo = await getServerVaultInfo(tokenConfig.rewardVault, false);
 		
 		return json({
 			success: true,

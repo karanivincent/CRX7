@@ -100,8 +100,8 @@
 			const response = await fetch('/api/vault/balance?refresh=true');
 			const result = await response.json();
 			
-			if (result.success) {
-				vaultTotalBalance = result.balance;
+			if (result.success && result.vault) {
+				vaultTotalBalance = result.vault.balance;
 				distributionAmount = vaultTotalBalance * 0.5;
 				
 				// Update store with external data
