@@ -7,7 +7,7 @@
   export let contestants: AnimalMapping[];
   export let onComplete: () => void;
   
-  let rosterPhase: 'ready' | 'header' | 'revealing' | 'complete' = 'ready';
+  let rosterPhase: 'ready' | 'header' | 'revealing' | 'complete' = 'header';
   let revealedContestants: boolean[] = new Array(contestants.length).fill(false);
   let isAnimating = false;
   
@@ -51,28 +51,7 @@
 
 <div class="flex flex-col items-center justify-center min-h-[700px] bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border-4 border-purple-300 p-8">
   
-  {#if rosterPhase === 'ready'}
-    <!-- Ready to Show Roster -->
-    <div class="text-center">
-      <div class="text-8xl mb-6">🏆</div>
-      <h2 class="text-4xl font-bold text-purple-600 mb-6">
-        Ready to Show the Final Roster?
-      </h2>
-      <p class="text-lg text-gray-600 mb-8">
-        Let's reveal all 7 contestants together!
-      </p>
-      
-      <Button 
-        on:click={showHeader} 
-        size="lg" 
-        class="px-8 py-4 text-xl bg-purple-600 hover:bg-purple-700"
-      >
-        <Icon icon="mdi:trophy" class="mr-2 h-6 w-6" />
-        Show Roster Title
-      </Button>
-    </div>
-    
-  {:else if rosterPhase === 'header'}
+  {#if rosterPhase === 'header'}
     <!-- Header Shown -->
     <div class="text-center mb-8" in:scale={{ duration: 800, start: 0.8 }}>
       <h1 class="text-6xl font-bold text-purple-600 mb-4">

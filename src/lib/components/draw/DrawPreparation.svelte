@@ -59,14 +59,8 @@
   
   function handleRevealComplete() {
     console.log('🎯 DrawPreparation: Animated reveal sequence complete');
-    revealPhase = 'complete';
-    
-    // Auto progress if enabled
-    if (autoProgress) {
-      setTimeout(() => {
-        gameRoundActions.advanceStage();
-      }, 1000);
-    }
+    // Go directly to spinning wheel
+    gameRoundActions.advanceStage();
   }
   
   function proceedToSpin() {
@@ -126,35 +120,5 @@
       onComplete={handleRevealComplete}
     />
     
-  {:else if revealPhase === 'complete'}
-    <!-- Ready to Spin -->
-    <div class="text-center w-full max-w-2xl">
-      <h2 class="text-3xl font-bold text-green-600 mb-6">
-        🎯 Ready to Spin the Wheel! 🎯
-      </h2>
-      
-      <p class="text-lg text-gray-700 mb-8">
-        All contestants have been selected and are ready for the draw!
-      </p>
-      
-      {#if !autoProgress}
-        <div class="flex gap-4 justify-center">
-          <Button on:click={proceedToSpin} size="lg" class="px-8 py-4 text-xl bg-green-600 hover:bg-green-700">
-            <Icon icon="mdi:wheel" class="mr-2 h-6 w-6" />
-            Spin the Wheel!
-          </Button>
-          
-          <Button variant="outline" on:click={retryGeneration} size="lg" class="px-6 py-4">
-            <Icon icon="mdi:refresh" class="mr-2 h-5 w-5" />
-            New Contestants
-          </Button>
-        </div>
-      {:else}
-        <div class="flex items-center justify-center gap-2 text-lg text-gray-600">
-          <Icon icon="mdi:timer-sand" class="w-6 h-6 animate-pulse" />
-          Spinning automatically...
-        </div>
-      {/if}
-    </div>
   {/if}
 </div>

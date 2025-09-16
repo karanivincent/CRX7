@@ -24,21 +24,25 @@
     isAnimating = false;
   }
   
-  async function showEligibleHolders() {
-    if (isAnimating) return;
-    isAnimating = true;
-    currentPhase = 'counting';
-    displayCount = 0;
-    await animateCounter(eligibleHoldersCount, 1500);
-    isAnimating = false;
+  function wait(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
   }
+  
+  let selectedCount = 0;
   
   async function selectContestants() {
     if (isAnimating) return;
     isAnimating = true;
     currentPhase = 'selecting';
-    progress = 0;
-    await animateProgress(100, 1000);
+    selectedCount = 0;
+    
+    // Animate finding contestants one by one (3+ seconds total)
+    for (let i = 1; i <= 7; i++) {
+      await wait(800 + Math.random() * 600); // Random timing between 800-1400ms
+      selectedCount = i;
+    }
+    
+    await wait(1000); // Dramatic pause before completion
     currentPhase = 'complete';
     isAnimating = false;
   }
@@ -175,15 +179,31 @@
         <Icon icon="mdi:dice-multiple" class="w-24 h-24 mx-auto text-purple-600 animate-bounce" />
       </div>
       <h2 class="text-3xl font-bold text-purple-700 mb-4">
-        Selecting 7 Lucky Contestants...
+        Finding Lucky Contestants...
       </h2>
-      <div class="w-80 bg-gray-200 rounded-full h-6 mb-6">
-        <div 
-          class="bg-gradient-to-r from-purple-500 to-pink-500 h-6 rounded-full transition-all duration-100 ease-out"
-          style="width: {progress}%"
-        ></div>
+      
+      <!-- Contestant Selection Counter -->
+      <div class="bg-purple-100 rounded-lg p-6 mb-6">
+        <div class="text-7xl font-bold text-purple-600 mb-2 tabular-nums">
+          {selectedCount} / 7
+        </div>
+        <p class="text-xl text-purple-700 font-semibold">
+          {selectedCount === 0 ? 'Starting selection...' : 
+           selectedCount === 7 ? 'All contestants found!' : 
+           `Found ${selectedCount} contestant${selectedCount > 1 ? 's' : ''}!`}
+        </p>
       </div>
-      <p class="text-lg text-gray-600">Random selection in progress...</p>
+      
+      <!-- Fun Selection Messages -->
+      {#if selectedCount > 0 && selectedCount < 7}
+        <div class="text-lg text-gray-600 animate-pulse">
+          🎯 Scanning for contestant #{selectedCount + 1}...
+        </div>
+      {:else if selectedCount === 7}
+        <div class="text-lg text-green-600 font-semibold animate-bounce">
+          🎉 Selection complete! Ready for reveals! 🎉
+        </div>
+      {/if}
     </div>
     
   {:else if currentPhase === 'complete'}
