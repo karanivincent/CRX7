@@ -150,15 +150,31 @@
 			
 			// Load existing winners
 			if (dashboardData.latestWinners) {
+				console.log('🏆 Raw winners data from dashboard:', dashboardData.latestWinners);
+				
 				const existingWinners = dashboardData.latestWinners
-					.filter((w: any) => w.drawNumber === currentDrawData.drawNumber)
-					.map((w: any) => ({
-						drawNumber: w.position || 1,
-						address: w.walletAddress,
-						animal: `${w.participant?.animalEmoji} ${w.participant?.animalName}`,
-						prizeAmount: parseFloat(w.prizeAmount) || prizePerWinner,
-						id: w.id
-					}));
+					.filter((w: any) => w.draw?.draw_number === currentDrawData.draw_number)
+					.map((w: any) => {
+						console.log('🎯 Processing winner:', w);
+						return {
+							drawNumber: w.position || 1,
+							address: w.wallet_address || 'Unknown Address',
+							animal: w.participant?.animal_emoji && w.participant?.animal_name 
+								? `${w.participant.animal_emoji} ${w.participant.animal_name}`
+								: 'Unknown Animal',
+							prizeAmount: parseFloat(w.prize_amount) || prizePerWinner,
+							id: w.id
+						};
+					})
+					.filter(winner => {
+						const isValid = winner.address !== 'Unknown Address' && winner.animal !== 'Unknown Animal';
+						if (!isValid) {
+							console.warn('🚨 Filtering out invalid winner:', winner);
+						}
+						return isValid;
+					});
+				
+				console.log('✅ Processed winners:', existingWinners);
 				
 				// Add all existing winners to state
 				existingWinners.forEach(winner => {
