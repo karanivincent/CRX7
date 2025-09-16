@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
-  import { drawActions } from '$lib/stores/draw-state';
+  import { gameRoundActions } from '$lib/stores/game-round';
   
   export let round: any;
   export let vaultBalance: number;
@@ -41,13 +41,13 @@
     
     if (autoProgress) {
       setTimeout(() => {
-        drawActions.nextStage();
+        gameRoundActions.advanceStage();
       }, 1500);
     }
   }
   
   function proceedManually() {
-    drawActions.nextStage();
+    gameRoundActions.advanceStage();
   }
 </script>
 

@@ -12,13 +12,11 @@ export const drawTable = pgTable("draw", {
   drawNumber: integer("draw_number").notNull().unique(),
   scheduledAt: timestamp("scheduled_at").notNull(),
   executedAt: timestamp("executed_at"),
+  completedAt: timestamp("completed_at"),
   status: text("status").notNull().default("scheduled"), // 'scheduled', 'active', 'completed', 'cancelled'
-  // Stage persistence for recovery
-  currentStage: text("current_stage").default("IDLE"), // Current game show stage
-  currentDrawNumber: integer("current_draw_number").default(0), // Current draw number (1-7)
-  totalParticipants: integer("total_participants").default(0),
-  totalPrizePool: numeric("total_prize_pool", { precision: 20, scale: 9 }).default("0"),
-  winnersCount: integer("winners_count").default(0),
+  // Final round data (only set on completion)
+  totalPrizePool: numeric("total_prize_pool", { precision: 20, scale: 9 }),
+  roundDurationMs: integer("round_duration_ms"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -36,10 +34,16 @@ export const participantTable = pgTable("participant", {
 export const winnerTable = pgTable("winner", {
   id: uuid("id").primaryKey(),
   drawId: uuid("draw_id").notNull().references(() => drawTable.id),
-  participantId: uuid("participant_id").notNull().references(() => participantTable.id),
+  participantId: uuid("participant_id").references(() => participantTable.id), // Made optional
   walletAddress: text("wallet_address").notNull(),
   prizeAmount: numeric("prize_amount", { precision: 20, scale: 9 }).notNull(),
-  position: integer("position").notNull(), // 1st, 2nd, 3rd place etc.
+  // New fields for better tracking
+  drawSequence: integer("draw_sequence").notNull(), // Which draw (1-7) this winner came from
+  sequenceNumber: integer("sequence_number").notNull(), // Overall order (1st, 2nd, 3rd winner)
+  animalName: text("animal_name").notNull(),
+  animalEmoji: text("animal_emoji").notNull(),
+  wonAt: timestamp("won_at").notNull(),
+  // Payment tracking
   transactionHash: text("transaction_hash"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
-  import { drawActions, contestants } from '$lib/stores/draw-state';
+  import { gameRoundActions, contestants } from '$lib/stores/game-round';
   import type { AnimalMapping } from '$lib/utils/animal-mapping';
   
   export let drawNumber: number = 1;
@@ -34,7 +34,7 @@
       revealContestants();
     } catch (error) {
       console.error('Error generating contestants:', error);
-      drawActions.setError('Failed to generate contestants');
+      gameRoundActions.setError('Failed to generate contestants');
     }
   }
   
@@ -59,7 +59,7 @@
         // Auto progress if enabled
         if (autoProgress) {
           setTimeout(() => {
-            drawActions.nextStage();
+            gameRoundActions.advanceStage();
           }, 1500);
         }
       }
@@ -69,7 +69,7 @@
   }
   
   function proceedToSpin() {
-    drawActions.nextStage();
+    gameRoundActions.advanceStage();
   }
   
   function retryGeneration() {

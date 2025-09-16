@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
-  import { drawActions, roundProgress } from '$lib/stores/draw-state';
+  import { gameRoundActions } from '$lib/stores/game-round';
   
   export let winners: Array<{
     drawNumber: number;
@@ -25,7 +25,11 @@
   });
   
   function continueToNextDraw() {
-    drawActions.nextStage();
+    if (remainingDraws > 0) {
+      gameRoundActions.startNextDraw();
+    } else {
+      gameRoundActions.advanceStage(); // Go to ROUND_COMPLETE
+    }
   }
   
   // Extract animal emoji and name from winner.animal string

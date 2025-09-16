@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
-  import { drawActions } from '$lib/stores/draw-state';
+  import { gameRoundActions } from '$lib/stores/game-round';
   
   export let winner: {
     drawNumber: number;
@@ -35,13 +35,13 @@
     // Auto progress if enabled
     if (autoProgress) {
       setTimeout(() => {
-        drawActions.nextStage();
+        gameRoundActions.advanceStage();
       }, 4000);
     }
   });
   
   function proceedNext() {
-    drawActions.nextStage();
+    gameRoundActions.advanceStage();
   }
   
   // Extract animal emoji and name from winner.animal string

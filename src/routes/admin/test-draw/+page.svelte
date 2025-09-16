@@ -4,7 +4,7 @@
   import AdminLayout from '$lib/components/admin/admin-layout.svelte';
   
   // Simple test of our stores
-  import { drawState, drawActions } from '$lib/stores/draw-state';
+  import { drawState, drawActions } from '$lib/stores/draw-state-old';
   
   export let data;
   const { user } = data;

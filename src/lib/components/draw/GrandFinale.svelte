@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
-  import { drawActions } from '$lib/stores/draw-state';
+  import { drawActions } from '$lib/stores/draw-state-old';
   
   export let round: any;
   export let winners: Array<{
