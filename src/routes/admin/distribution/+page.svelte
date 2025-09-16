@@ -188,6 +188,45 @@
 		}
 	}
 
+	async function clearPendingWinners() {
+		if (!browser) return;
+		
+		const winnerCount = pendingWinners?.count || 0;
+		const totalAmount = pendingWinners?.totalPendingFormatted || '0 SOL';
+		
+		if (winnerCount === 0) {
+			alert('No pending winners to clear');
+			return;
+		}
+		
+		const confirmMessage = `Are you sure you want to clear ${winnerCount} pending winners (${totalAmount})?\n\nThis action cannot be undone.`;
+		if (!confirm(confirmMessage)) {
+			return;
+		}
+		
+		loadingWinners = true;
+		
+		try {
+			const response = await fetch('/api/admin/clear-pending-winners', {
+				method: 'POST'
+			});
+			const data = await response.json();
+			
+			if (data.success) {
+				alert(`Successfully cleared ${data.cleared.count} pending winners (${data.cleared.totalAmountFormatted})`);
+				// Refresh the pending winners list
+				await fetchPendingWinners();
+			} else {
+				alert(`Failed to clear pending winners: ${data.error}`);
+			}
+		} catch (err) {
+			console.error('Error clearing pending winners:', err);
+			alert('Error clearing pending winners. Please try again.');
+		} finally {
+			loadingWinners = false;
+		}
+	}
+
 	onMount(() => {
 		fetchAdminBalance();
 		fetchPendingWinners();
@@ -425,12 +464,20 @@
 										<p class="font-medium text-gray-900">{pendingWinners.count} winners pending payment</p>
 										<p class="text-sm text-gray-600">Total amount: {pendingWinners.totalPendingFormatted}</p>
 									</div>
-									<Button size="sm" variant="outline" on:click={fetchPendingWinners}>
-										{#if Icon}
-											<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
-										{/if}
-										Refresh
-									</Button>
+									<div class="flex gap-2">
+										<Button size="sm" variant="outline" on:click={fetchPendingWinners} disabled={loadingWinners}>
+											{#if Icon}
+												<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
+											{/if}
+											Refresh
+										</Button>
+										<Button size="sm" variant="destructive" on:click={clearPendingWinners} disabled={loadingWinners}>
+											{#if Icon}
+												<Icon icon="mdi:delete-sweep" class="w-4 h-4 mr-2" />
+											{/if}
+											Clear All
+										</Button>
+									</div>
 								</div>
 							</div>
 
