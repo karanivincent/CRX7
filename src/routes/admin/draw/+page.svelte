@@ -216,6 +216,11 @@
 		try {
 			drawActions.setLoading(true);
 			
+			// Explicitly reset state before starting new round to prevent persistence issues
+			drawActions.reset();
+			currentDrawData = null;
+			setCurrentDrawId('');
+			
 			// Create new draw in database
 			const createResponse = await fetch('/api/draws', {
 				method: 'POST',
@@ -415,7 +420,14 @@
 					})
 				});
 			}
-			drawActions.nextStage();
+			
+			// Reset state after completing the round to prevent state persistence issues
+			drawActions.reset();
+			currentDrawData = null;
+			setCurrentDrawId('');
+			
+			// Move to distribution stage
+			drawActions.goToStage('DISTRIBUTION');
 		} catch (err) {
 			console.error('Error completing round:', err);
 		}
