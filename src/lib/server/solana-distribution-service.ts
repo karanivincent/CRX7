@@ -65,26 +65,22 @@ export async function executeDistribution(
     // Calculate amount per winner
     const amountPerWinner = winnersAmount / pendingWinners.length;
 
-    // Create distribution history record
-    const { data: historyRecord, error: historyError } = await supabase
-      .from('distribution_history')
-      .insert({
-        total_amount: totalAmount.toString(),
-        winners_amount: winnersAmount.toString(),
-        holding_amount: holdingAmount.toString(),
-        charity_amount: charityAmount.toString(),
-        executed_by: adminWalletAddress,
-        status: 'pending',
-        notes: walletsConfigured 
-          ? 'Ready for real transaction execution' 
-          : 'Simulation mode - distribution wallets not configured'
-      })
-      .select()
-      .single();
-
-    if (historyError) {
-      throw historyError;
-    }
+    // TODO: Skip distribution history for now since the table doesn't exist
+    // Create a mock history record for local tracking
+    const historyRecord = {
+      id: crypto.randomUUID(),
+      total_amount: totalAmount.toString(),
+      winners_amount: winnersAmount.toString(),
+      holding_amount: holdingAmount.toString(),
+      charity_amount: charityAmount.toString(),
+      executed_by: adminWalletAddress,
+      status: 'pending',
+      notes: walletsConfigured 
+        ? 'Ready for real transaction execution' 
+        : 'Simulation mode - distribution wallets not configured'
+    };
+    
+    console.log('Distribution history record created locally (table not available):', historyRecord);
 
     // For now, simulate the transactions
     // TODO: Replace with actual Solana transactions when private keys are configured
@@ -113,20 +109,13 @@ export async function executeDistribution(
       }
     }
 
-    // Update distribution history with completion
-    const { error: updateHistoryError } = await supabase
-      .from('distribution_history')
-      .update({
-        status: 'completed',
-        winners_transaction_hash: simulatedTransactions.winnersTransactionHash,
-        holding_transaction_hash: simulatedTransactions.holdingTransactionHash,
-        charity_transaction_hash: simulatedTransactions.charityTransactionHash
-      })
-      .eq('id', historyRecord.id);
-
-    if (updateHistoryError) {
-      throw updateHistoryError;
-    }
+    // TODO: Skip distribution history update since the table doesn't exist
+    // Update the local record for logging
+    historyRecord.status = 'completed';
+    console.log('Distribution history updated locally:', {
+      status: 'completed',
+      transactions: simulatedTransactions
+    });
 
     console.log('Distribution completed:', {
       winnersCount: pendingWinners.length,

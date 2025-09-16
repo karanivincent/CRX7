@@ -267,9 +267,14 @@
 			
 			console.log('✅ Round completed and persisted successfully');
 			
+			// Clear loading state after successful completion
+			gameRoundActions.setLoading(false);
+			
 		} catch (err) {
 			console.error('Error completing round:', err);
 			gameRoundActions.setError('Failed to complete round');
+			// Clear loading state on error as well
+			gameRoundActions.setLoading(false);
 		}
 	}
 

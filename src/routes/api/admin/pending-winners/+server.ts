@@ -6,7 +6,7 @@ export const GET: RequestHandler = async () => {
   try {
     // Get pending winners (those without transaction hashes)
     const { data: pendingWinners, error } = await supabase
-      .from('winners')
+      .from('winner')
       .select(`
         id,
         draw_id,
@@ -18,7 +18,7 @@ export const GET: RequestHandler = async () => {
         animal_emoji,
         won_at,
         transaction_hash,
-        draws!inner(
+        draw!inner(
           draw_number,
           completed_at
         )
@@ -41,8 +41,8 @@ export const GET: RequestHandler = async () => {
       animalName: winner.animal_name,
       animalEmoji: winner.animal_emoji,
       wonAt: winner.won_at,
-      drawNumber: winner.draws.draw_number,
-      drawCompletedAt: winner.draws.completed_at
+      drawNumber: winner.draw.draw_number,
+      drawCompletedAt: winner.draw.completed_at
     }));
 
     // Calculate total pending amount
