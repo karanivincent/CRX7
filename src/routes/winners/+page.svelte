@@ -469,13 +469,13 @@
 											</th>
 										{:else}
 											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-												Prize Amount
+												{activeTab === 'leaderboard' ? 'Total Won' : 'Prize Amount'}
 											</th>
 											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-												Draw #
+												{activeTab === 'leaderboard' ? 'Win Count' : 'Draw #'}
 											</th>
 											<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-												Date Won
+												{activeTab === 'leaderboard' ? 'Last Win' : 'Date Won'}
 											</th>
 										{/if}
 										<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -516,27 +516,49 @@
 											
 											<!-- Prize Amount -->
 											<td class="px-6 py-4 whitespace-nowrap">
-												<div class="font-bold text-green-600">
-													{parseFloat(winner.prize_amount).toFixed(3)} {tokenDisplay.symbol}
-												</div>
-												<div class="text-xs text-gray-500">
-													≈ ${(parseFloat(winner.prize_amount) * 150).toFixed(2)}
-												</div>
+												{#if activeTab === 'leaderboard'}
+													<div class="font-bold text-green-600">
+														{parseFloat(winner.total_won || 0).toFixed(3)} {tokenDisplay.symbol}
+													</div>
+													<div class="text-xs text-gray-500">
+														{winner.wins_count} win{winner.wins_count > 1 ? 's' : ''}
+													</div>
+												{:else}
+													<div class="font-bold text-green-600">
+														{parseFloat(winner.prize_amount || 0).toFixed(3)} {tokenDisplay.symbol}
+													</div>
+													<div class="text-xs text-gray-500">
+														≈ ${(parseFloat(winner.prize_amount || 0) * 150).toFixed(2)}
+													</div>
+												{/if}
 											</td>
 											
 											<!-- Draw Number -->
 											<td class="px-6 py-4 whitespace-nowrap">
-												<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-													#{winner.draw?.draw_number || 'N/A'}
-												</span>
+												{#if activeTab === 'leaderboard'}
+													<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+														Total Wins
+													</span>
+												{:else}
+													<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+														#{winner.draw?.draw_number || winner.drawNumber || winner.draw_sequence || 'N/A'}
+													</span>
+												{/if}
 											</td>
 											
 											<!-- Date Won -->
 											<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-												{new Date(winner.won_at || winner.created_at).toLocaleDateString()}
-												<div class="text-xs text-gray-500">
-													{new Date(winner.won_at || winner.created_at).toLocaleTimeString()}
-												</div>
+												{#if activeTab === 'leaderboard'}
+													{new Date(winner.last_win).toLocaleDateString()}
+													<div class="text-xs text-gray-500">
+														Last win
+													</div>
+												{:else}
+													{new Date(winner.won_at || winner.created_at).toLocaleDateString()}
+													<div class="text-xs text-gray-500">
+														{new Date(winner.won_at || winner.created_at).toLocaleTimeString()}
+													</div>
+												{/if}
 											</td>
 											
 											<!-- Verify Actions -->
