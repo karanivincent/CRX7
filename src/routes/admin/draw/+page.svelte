@@ -121,6 +121,7 @@
 			// Check if there's already an active round
 			if (await hasActiveRound()) {
 				gameRoundActions.setError('There is already an active round. Please complete it first.');
+				gameRoundActions.setLoading(false);
 				return;
 			}
 			
@@ -134,9 +135,13 @@
 			// Initialize store with new round
 			gameRoundActions.startNewRound(roundId, distributionAmount);
 			
+			// Clear loading state after successful start
+			gameRoundActions.setLoading(false);
+			
 		} catch (err) {
 			console.error('Error starting new game show:', err);
 			gameRoundActions.setError('Failed to start new round');
+			gameRoundActions.setLoading(false);
 		}
 	}
 	
