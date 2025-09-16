@@ -7,6 +7,7 @@
 	import { getTokenDisplay, getDistributionConfig } from '$lib/config/client';
 	import AdminSidebar from '$lib/components/admin/admin-sidebar.svelte';
 	import { browser } from '$app/environment';
+	import { isTestMode } from '$lib/config/test-wallets';
 	
 	// Dynamically import Icon to avoid SSR issues
 	let Icon: any;
@@ -203,6 +204,21 @@
 	
 	<main class="flex-1 p-8">
 		<div class="max-w-6xl mx-auto space-y-8">
+			<!-- Test Mode Banner -->
+			{#if isTestMode()}
+				<div class="bg-gradient-to-r from-orange-100 to-orange-200 border border-orange-300 rounded-lg p-4">
+					<div class="flex items-center gap-3">
+						{#if Icon}
+							<Icon icon="mdi:test-tube" class="w-6 h-6 text-orange-600" />
+						{/if}
+						<div>
+							<h3 class="font-bold text-orange-800">🧪 Test Mode Active</h3>
+							<p class="text-orange-700 text-sm">Using test wallets for safe SOL distribution testing. All transactions will go to your personal wallets.</p>
+						</div>
+					</div>
+				</div>
+			{/if}
+
 			<!-- Header -->
 			<div class="flex justify-between items-start">
 				<div>

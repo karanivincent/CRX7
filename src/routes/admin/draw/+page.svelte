@@ -7,6 +7,7 @@
 	import SpinningWheel from '$lib/components/admin/spinning-wheel.svelte';
 	import { mapWalletsToAnimals, type AnimalMapping } from '$lib/utils/animal-mapping';
 	import { onMount, onDestroy } from 'svelte';
+	import { TEST_WALLETS, createTestWinners, isTestMode, validateTestWallets } from '$lib/config/test-wallets';
 	
 	// Import new store-based system
 	import { 
@@ -49,6 +50,10 @@
 	
 	// Auto-progression cleanup
 	let unsubscribeAutoProgression: (() => void) | null = null;
+	
+	// Test wallet balances
+	let testWalletBalances: Record<string, number> = {};
+	let loadingBalances = false;
 	
 	// Reactive values from store
 	$: currentStageValue = $currentStage;
@@ -272,6 +277,116 @@
 		gameRoundActions.resetRound();
 		console.log('✅ Game show reset successfully');
 	}
+
+	// Testing/Skip functions for quick navigation
+	async function skipToSpinning() {
+		try {
+			gameRoundActions.setLoading(true);
+			
+			// If no round started, start one
+			if (currentStageValue === 'IDLE') {
+				await startNewGameShow();
+				await new Promise(resolve => setTimeout(resolve, 500)); // Wait for round to initialize
+			}
+			
+			// Skip to draw prep if needed
+			if (currentStageValue === 'ROUND_START') {
+				gameRoundActions.advanceStage(); // -> DRAW_PREP
+			}
+			
+			// Generate contestants if needed and skip to spinning
+			if (currentStageValue === 'DRAW_PREP') {
+				await generateContestantsForDraw();
+				gameRoundActions.advanceStage(); // -> SPINNING
+			}
+			
+			gameRoundActions.setLoading(false);
+		} catch (err) {
+			console.error('Error skipping to spinning:', err);
+			gameRoundActions.setLoading(false);
+		}
+	}
+
+	async function skipToFinalWithWinners() {
+		try {
+			gameRoundActions.setLoading(true);
+			
+			// Start fresh round if needed
+			if (currentStageValue === 'IDLE') {
+				await startNewGameShow();
+				await new Promise(resolve => setTimeout(resolve, 500));
+			}
+			
+			// Validate test wallets first
+			const validation = validateTestWallets();
+			if (!validation.valid) {
+				console.error('❌ Test wallet validation failed:', validation.errors);
+				gameRoundActions.setError('Invalid test wallet configuration');
+				return;
+			}
+			
+			// Use real test wallets as winners
+			console.log('🎯 Using real test wallets for testing');
+			TEST_WALLETS.forEach((wallet, index) => {
+				gameRoundActions.addWinner({
+					address: wallet.address,
+					animal: `${wallet.animal.emoji} ${wallet.animal.name}`,
+					prizeAmount: prizePerWinner
+				});
+			});
+			
+			// Go directly to final stage
+			gameRoundActions.goToStage('ROUND_COMPLETE');
+			
+			gameRoundActions.setLoading(false);
+			console.log('✅ Skipped to final with 7 real test wallets:', TEST_WALLETS.map(w => w.name));
+		} catch (err) {
+			console.error('Error skipping to final:', err);
+			gameRoundActions.setLoading(false);
+		}
+	}
+
+	async function completeRoundAndGoToDistribution() {
+		try {
+			await completeRoundAndPersist();
+			// After completing round, show a message with link to distribution
+			setTimeout(() => {
+				if (confirm('Round completed! Go to distribution page to manage payouts?')) {
+					window.location.href = '/admin/distribution';
+				}
+			}, 1000);
+		} catch (err) {
+			console.error('Error completing round:', err);
+		}
+	}
+
+	async function checkTestWalletBalances() {
+		try {
+			loadingBalances = true;
+			testWalletBalances = {};
+			
+			// Check balance for each test wallet
+			for (const wallet of TEST_WALLETS) {
+				try {
+					const response = await fetch(`/api/wallet/balance?address=${wallet.address}`);
+					const data = await response.json();
+					
+					if (data.success) {
+						testWalletBalances[wallet.address] = data.balance || 0;
+					} else {
+						testWalletBalances[wallet.address] = 0;
+					}
+				} catch (err) {
+					console.error(`Error checking balance for ${wallet.name}:`, err);
+					testWalletBalances[wallet.address] = 0;
+				}
+			}
+		} catch (err) {
+			console.error('Error checking test wallet balances:', err);
+		} finally {
+			loadingBalances = false;
+		}
+	}
 </script>
 
 <svelte:head>
@@ -362,7 +477,6 @@
 			maxDraws={MAX_DRAWS}
 			prizeAmount={prizePerWinner}
 			onGenerateContestants={generateContestantsForDraw}
-			eligibleHoldersCount={$gameRound.eligibleHoldersCount}
 			autoProgress={false}
 		/>
 		
@@ -444,31 +558,125 @@
 		</div>
 	{/if}
 	
-	<!-- Debug/Admin Controls -->
-	<div class="fixed bottom-4 right-4 bg-white rounded-lg shadow-lg p-4 border">
-		<div class="text-sm text-gray-600 mb-2">
-			<div>Stage: <span class="font-mono">{currentStageValue}</span></div>
-			<div>Draw: {currentDrawValue} of {MAX_DRAWS}</div>
-			<div>Winners: {selectedWinners.length}</div>
+	<!-- Enhanced Testing Panel -->
+	<div class="fixed top-4 right-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg shadow-xl p-4 border-2 border-orange-200 max-w-sm">
+		<!-- Header -->
+		<div class="flex items-center justify-between mb-3">
+			<div class="flex items-center gap-2">
+				<Icon icon="mdi:test-tube" class="w-5 h-5 text-orange-600" />
+				<h3 class="font-bold text-orange-800">Testing Panel</h3>
+			</div>
+			<div class="px-2 py-1 bg-orange-200 rounded text-xs font-medium text-orange-800">
+				TEST MODE
+			</div>
 		</div>
 		
-		<div class="flex gap-2">
+		<!-- Current Status -->
+		<div class="bg-white rounded-lg p-3 mb-3 border border-orange-200">
+			<div class="text-sm text-gray-600 space-y-1">
+				<div class="flex justify-between">
+					<span>Stage:</span>
+					<span class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{currentStageValue}</span>
+				</div>
+				<div class="flex justify-between">
+					<span>Draw:</span>
+					<span class="font-medium">{currentDrawValue} of {MAX_DRAWS}</span>
+				</div>
+				<div class="flex justify-between">
+					<span>Winners:</span>
+					<span class="font-medium text-green-600">{selectedWinners.length}</span>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Test Wallet Preview -->
+		<div class="bg-white rounded-lg p-3 mb-3 border border-orange-200">
+			<div class="text-xs font-medium text-gray-700 mb-2 flex items-center justify-between">
+				<div class="flex items-center gap-1">
+					<Icon icon="mdi:wallet" class="w-3 h-3" />
+					Test Wallets ({TEST_WALLETS.length})
+				</div>
+				<Button variant="ghost" size="sm" on:click={checkTestWalletBalances} disabled={loadingBalances} class="text-xs py-1 px-2 h-6">
+					<Icon icon="mdi:refresh" class="w-3 h-3 {loadingBalances ? 'animate-spin' : ''}" />
+				</Button>
+			</div>
+			<div class="space-y-1 max-h-32 overflow-y-auto">
+				{#each TEST_WALLETS.slice(0, 4) as wallet}
+					<div class="flex items-center gap-2 text-xs">
+						<span class="text-sm">{wallet.animal.emoji}</span>
+						<div class="flex-1 min-w-0">
+							<div class="font-medium text-gray-800 truncate">{wallet.animal.name}</div>
+							<div class="text-gray-500 font-mono truncate">{wallet.address.slice(0, 8)}...{wallet.address.slice(-4)}</div>
+						</div>
+						<div class="text-right">
+							{#if loadingBalances}
+								<div class="w-12 h-3 bg-gray-200 rounded animate-pulse"></div>
+							{:else if testWalletBalances[wallet.address] !== undefined}
+								<div class="font-medium text-green-600 text-xs">
+									{testWalletBalances[wallet.address].toFixed(3)} SOL
+								</div>
+							{:else}
+								<div class="text-gray-400 text-xs">--</div>
+							{/if}
+						</div>
+					</div>
+				{/each}
+				{#if TEST_WALLETS.length > 4}
+					<div class="text-xs text-gray-500 text-center pt-1">
+						+{TEST_WALLETS.length - 4} more wallets
+					</div>
+				{/if}
+			</div>
+		</div>
+		
+		<!-- Quick Skip Actions -->
+		<div class="space-y-2 mb-3">
+			<div class="text-xs font-bold text-orange-700 mb-2 flex items-center gap-1">
+				<Icon icon="mdi:rocket-launch" class="w-3 h-3" />
+				Quick Skip Actions
+			</div>
+			
+			<div class="grid grid-cols-2 gap-2">
+				<Button variant="outline" size="sm" on:click={skipToSpinning} class="text-xs py-2 bg-blue-50 hover:bg-blue-100 border-blue-200">
+					<Icon icon="mdi:dice-6" class="w-4 h-4 mb-1" />
+					<div>To Spin</div>
+				</Button>
+				<Button variant="outline" size="sm" on:click={skipToFinalWithWinners} class="text-xs py-2 bg-green-50 hover:bg-green-100 border-green-200">
+					<Icon icon="mdi:trophy" class="w-4 h-4 mb-1" />
+					<div>To Final</div>
+				</Button>
+			</div>
+			
+			{#if currentStageValue === 'ROUND_COMPLETE'}
+				<Button variant="outline" size="sm" on:click={completeRoundAndGoToDistribution} class="w-full text-xs py-2 bg-purple-50 hover:bg-purple-100 border-purple-200">
+					<Icon icon="mdi:cash-multiple" class="w-4 h-4 mr-1" />
+					Complete & Go to Distribution
+				</Button>
+			{/if}
+		</div>
+		
+		<!-- Regular Controls -->
+		<div class="border-t border-orange-200 pt-3">
+			<div class="text-xs font-medium text-gray-700 mb-2">Controls</div>
+			
 			{#if currentStageValue !== 'IDLE' && currentStageValue !== 'DISTRIBUTION'}
-				<Button variant="outline" size="sm" on:click={() => gameRoundActions.advanceStage()}>
-					<Icon icon="mdi:skip-next" class="w-4 h-4 mr-1" />
+				<Button variant="outline" size="sm" on:click={() => gameRoundActions.advanceStage()} class="w-full text-xs py-1 mb-2">
+					<Icon icon="mdi:skip-next" class="w-3 h-3 mr-1" />
 					Next Stage
 				</Button>
 			{/if}
 			
-			<Button variant="outline" size="sm" on:click={resetGameShow}>
-				<Icon icon="mdi:stop" class="w-4 h-4 mr-1" />
-				Reset
-			</Button>
-			
-			<Button variant="outline" size="sm" on:click={refreshVaultBalance} disabled={isRefreshingBalance}>
-				<Icon icon="mdi:refresh" class="w-4 h-4 mr-1 {isRefreshingBalance ? 'animate-spin' : ''}" />
-				Refresh
-			</Button>
+			<div class="flex gap-2">
+				<Button variant="outline" size="sm" on:click={resetGameShow} class="flex-1 text-xs py-1">
+					<Icon icon="mdi:stop" class="w-3 h-3 mr-1" />
+					Reset
+				</Button>
+				
+				<Button variant="outline" size="sm" on:click={refreshVaultBalance} disabled={isRefreshingBalance} class="flex-1 text-xs py-1">
+					<Icon icon="mdi:refresh" class="w-3 h-3 mr-1 {isRefreshingBalance ? 'animate-spin' : ''}" />
+					Refresh
+				</Button>
+			</div>
 		</div>
 	</div>
 </AdminLayout>

@@ -1,8 +1,6 @@
 import { getDistributionConfig } from '$lib/config/client';
 import { getDistributionWallets, validateDistributionWallets } from './solana-distribution-config';
-import { db } from '$lib/db/connection';
-import { winnerTable, distributionHistoryTable } from '$lib/db/schema';
-import { eq, isNull } from 'drizzle-orm';
+import { supabase } from '$lib/db/index';
 
 interface DistributionResult {
   success: boolean;
@@ -43,11 +41,15 @@ export async function executeDistribution(
     const charityAmount = totalAmount * (distributionConfig.charityPercentage / 100);
 
     // Get pending winners from database
-    const pendingWinners = await db
-      .select()
-      .from(winnerTable)
-      .where(isNull(winnerTable.transactionHash))
-      .orderBy(winnerTable.wonAt);
+    const { data: pendingWinners, error: winnersError } = await supabase
+      .from('winners')
+      .select('*')
+      .is('transaction_hash', null)
+      .order('won_at');
+
+    if (winnersError) {
+      throw winnersError;
+    }
 
     console.log(`Found ${pendingWinners.length} pending winners for distribution`);
 
@@ -64,17 +66,25 @@ export async function executeDistribution(
     const amountPerWinner = winnersAmount / pendingWinners.length;
 
     // Create distribution history record
-    const historyRecord = await db.insert(distributionHistoryTable).values({
-      totalAmount: totalAmount.toString(),
-      winnersAmount: winnersAmount.toString(),
-      holdingAmount: holdingAmount.toString(),
-      charityAmount: charityAmount.toString(),
-      executedBy: adminWalletAddress,
-      status: 'pending',
-      notes: walletsConfigured 
-        ? 'Ready for real transaction execution' 
-        : 'Simulation mode - distribution wallets not configured'
-    }).returning();
+    const { data: historyRecord, error: historyError } = await supabase
+      .from('distribution_history')
+      .insert({
+        total_amount: totalAmount.toString(),
+        winners_amount: winnersAmount.toString(),
+        holding_amount: holdingAmount.toString(),
+        charity_amount: charityAmount.toString(),
+        executed_by: adminWalletAddress,
+        status: 'pending',
+        notes: walletsConfigured 
+          ? 'Ready for real transaction execution' 
+          : 'Simulation mode - distribution wallets not configured'
+      })
+      .select()
+      .single();
+
+    if (historyError) {
+      throw historyError;
+    }
 
     // For now, simulate the transactions
     // TODO: Replace with actual Solana transactions when private keys are configured
@@ -90,23 +100,33 @@ export async function executeDistribution(
 
     // Update winners with simulated transaction hashes
     for (const winner of pendingWinners) {
-      await db.update(winnerTable)
-        .set({
-          transactionHash: simulatedTransactions.winnersTransactionHash,
-          paidAt: new Date()
+      const { error: updateError } = await supabase
+        .from('winners')
+        .update({
+          transaction_hash: simulatedTransactions.winnersTransactionHash,
+          paid_at: new Date().toISOString()
         })
-        .where(eq(winnerTable.id, winner.id));
+        .eq('id', winner.id);
+
+      if (updateError) {
+        throw updateError;
+      }
     }
 
     // Update distribution history with completion
-    await db.update(distributionHistoryTable)
-      .set({
+    const { error: updateHistoryError } = await supabase
+      .from('distribution_history')
+      .update({
         status: 'completed',
-        winnersTransactionHash: simulatedTransactions.winnersTransactionHash,
-        holdingTransactionHash: simulatedTransactions.holdingTransactionHash,
-        charityTransactionHash: simulatedTransactions.charityTransactionHash
+        winners_transaction_hash: simulatedTransactions.winnersTransactionHash,
+        holding_transaction_hash: simulatedTransactions.holdingTransactionHash,
+        charity_transaction_hash: simulatedTransactions.charityTransactionHash
       })
-      .where(eq(distributionHistoryTable.id, historyRecord[0].id));
+      .eq('id', historyRecord.id);
+
+    if (updateHistoryError) {
+      throw updateHistoryError;
+    }
 
     console.log('Distribution completed:', {
       winnersCount: pendingWinners.length,
@@ -139,13 +159,17 @@ export async function executeDistribution(
  */
 export async function getPendingWinnersSummary() {
   try {
-    const pendingWinners = await db
-      .select()
-      .from(winnerTable)
-      .where(isNull(winnerTable.transactionHash));
+    const { data: pendingWinners, error } = await supabase
+      .from('winners')
+      .select('*')
+      .is('transaction_hash', null);
+
+    if (error) {
+      throw error;
+    }
 
     const totalPending = pendingWinners.reduce((sum, winner) => {
-      return sum + Number(winner.prizeAmount);
+      return sum + Number(winner.prize_amount);
     }, 0);
 
     return {

@@ -1,8 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/db/connection';
-import { distributionHistoryTable } from '$lib/db/schema';
-import { desc } from 'drizzle-orm';
+import { supabase } from '$lib/db/index';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
@@ -10,35 +8,44 @@ export const GET: RequestHandler = async ({ url }) => {
     const offset = parseInt(url.searchParams.get('offset') || '0');
 
     // Get distribution history with pagination
-    const history = await db
-      .select()
-      .from(distributionHistoryTable)
-      .orderBy(desc(distributionHistoryTable.executedAt))
-      .limit(limit)
-      .offset(offset);
+    const { data: history, error } = await supabase
+      .from('distribution_history')
+      .select('*')
+      .order('executed_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (error) {
+      throw error;
+    }
 
     // Format amounts for display
     const formattedHistory = history.map(record => ({
       ...record,
-      totalAmountFormatted: `${Number(record.totalAmount).toFixed(3)} SOL`,
-      winnersAmountFormatted: `${Number(record.winnersAmount).toFixed(3)} SOL`,
-      holdingAmountFormatted: `${Number(record.holdingAmount).toFixed(3)} SOL`,
-      charityAmountFormatted: `${Number(record.charityAmount).toFixed(3)} SOL`,
-      executedAtFormatted: new Date(record.executedAt).toLocaleString()
+      totalAmountFormatted: `${Number(record.total_amount).toFixed(3)} SOL`,
+      winnersAmountFormatted: `${Number(record.winners_amount).toFixed(3)} SOL`,
+      holdingAmountFormatted: `${Number(record.holding_amount).toFixed(3)} SOL`,
+      charityAmountFormatted: `${Number(record.charity_amount).toFixed(3)} SOL`,
+      executedAtFormatted: new Date(record.executed_at).toLocaleString()
     }));
 
     // Get total count for pagination
-    const totalCount = await db.$count(distributionHistoryTable);
+    const { count: totalCount, error: countError } = await supabase
+      .from('distribution_history')
+      .select('*', { count: 'exact', head: true });
+
+    if (countError) {
+      throw countError;
+    }
 
     return json({
       success: true,
       data: {
         history: formattedHistory,
         pagination: {
-          total: totalCount,
+          total: totalCount || 0,
           limit,
           offset,
-          hasMore: (offset + limit) < totalCount
+          hasMore: (offset + limit) < (totalCount || 0)
         }
       }
     });
