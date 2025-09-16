@@ -47,7 +47,10 @@
   }
   
   function proceedManually() {
+    console.log('🎯 RoundOpening: proceedManually() called - advancing stage');
     gameRoundActions.advanceStage();
+    gameRoundActions.setLoading(false); // Clear loading state after stage advancement
+    console.log('🎯 RoundOpening: advanceStage() completed and loading cleared');
   }
 </script>
 

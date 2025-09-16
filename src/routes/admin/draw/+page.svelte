@@ -18,7 +18,6 @@
 		roundProgress,
 		isLoading,
 		gameRoundActions,
-		startAutoProgression,
 		getCurrentRoundData,
 		type Winner
 	} from '$lib/stores/game-round';
@@ -31,7 +30,7 @@
 	import GrandFinale from '$lib/components/draw/GrandFinale.svelte';
 	
 	// Import database operations
-	import { startNewRound, completeRound, getActiveRound, hasActiveRound } from '$lib/db/round-operations';
+	import { startNewRound, completeRound } from '$lib/db/round-operations';
 	
 	export let data;
 	const { user, vaultBalance, vaultError } = data;
@@ -59,6 +58,11 @@
 	$: progress = $roundProgress;
 	$: loading = $isLoading;
 	
+	// Debug reactive values
+	$: console.log('📊 MAIN PAGE: currentStage =', currentStageValue, '| loading =', loading);
+	
+	
+	
 	// Calculated values
 	$: prizePerWinner = distributionAmount / MAX_DRAWS;
 	$: remainingDraws = MAX_DRAWS - selectedWinners.length;
@@ -66,33 +70,21 @@
 	$: holdingAmount = vaultTotalBalance * 0.4;
 	$: charityAmount = vaultTotalBalance * 0.1;
 	
-	// Check for active round on mount
+	// Initialize page
 	onMount(async () => {
 		await refreshVaultBalance();
-		await checkForActiveRound();
+		// Removed automatic round recovery - user should start fresh
 		
-		// Start auto-progression
-		unsubscribeAutoProgression = startAutoProgression();
+		// Temporarily disable auto-progression to debug infinite loop
+		// unsubscribeAutoProgression = startAutoProgression();
 	});
 	
 	onDestroy(() => {
-		if (unsubscribeAutoProgression) {
-			unsubscribeAutoProgression();
-		}
+		// if (unsubscribeAutoProgression) {
+		// 	unsubscribeAutoProgression();
+		// }
 	});
 
-	async function checkForActiveRound() {
-		try {
-			const activeRound = await getActiveRound();
-			if (activeRound) {
-				// Recover active round instead of starting new
-				gameRoundActions.recoverActiveRound(activeRound.id, 1);
-				console.log('🔄 Recovered active round from database');
-			}
-		} catch (error) {
-			console.error('Error checking for active round:', error);
-		}
-	}
 
 	async function refreshVaultBalance() {
 		try {
@@ -115,32 +107,41 @@
 	}
 
 	async function startNewGameShow() {
+		console.log('🎮 MAIN PAGE: startNewGameShow() called - current stage:', $currentStage);
 		try {
+			console.log('🔄 Setting loading to true');
 			gameRoundActions.setLoading(true);
 			
-			// Check if there's already an active round
-			if (await hasActiveRound()) {
-				gameRoundActions.setError('There is already an active round. Please complete it first.');
-				gameRoundActions.setLoading(false);
-				return;
-			}
+			// Allow starting new rounds without checking for existing active rounds
+			console.log('🎯 Starting fresh round...');
 			
 			// Create new round in database
-			const { id: roundId } = await startNewRound(distributionAmount);
+			console.log('🎯 Creating new round in database...');
+			const result = await startNewRound(distributionAmount);
+			console.log('✅ Created round:', result);
 			
-			// Get eligible holders count
-			const eligibleHoldersCount = await getEligibleHoldersCount();
-			gameRoundActions.updateExternalData({ eligibleHoldersCount });
+			// Initialize store with new round immediately
+			console.log('🏪 Initializing store with new round...');
+			gameRoundActions.startNewRound(result.id, distributionAmount);
 			
-			// Initialize store with new round
-			gameRoundActions.startNewRound(roundId, distributionAmount);
-			
-			// Clear loading state after successful start
+			// Clear loading state so UI can proceed
+			console.log('🔄 Setting loading to false');
 			gameRoundActions.setLoading(false);
+			console.log('✅ Game show started successfully!');
+			
+			// Get eligible holders count in background (non-blocking)
+			console.log('👥 Fetching eligible holders in background...');
+			getEligibleHoldersCount().then(count => {
+				console.log('👥 Got eligible holders count:', count);
+				gameRoundActions.updateExternalData({ eligibleHoldersCount: count });
+			}).catch(err => {
+				console.error('❌ Error fetching eligible holders:', err);
+				// Continue anyway, just show 0 eligible holders
+			});
 			
 		} catch (err) {
-			console.error('Error starting new game show:', err);
-			gameRoundActions.setError('Failed to start new round');
+			console.error('❌ Error starting new game show:', err);
+			gameRoundActions.setError(`Failed to start new round: ${err instanceof Error ? err.message : String(err)}`);
 			gameRoundActions.setLoading(false);
 		}
 	}
@@ -165,7 +166,9 @@
 	}
 	
 	async function generateContestantsForDraw() {
+		console.log('🔄 MAIN PAGE: generateContestantsForDraw() called');
 		try {
+			console.log('🔄 MAIN PAGE: Setting loading to true');
 			gameRoundActions.setLoading(true);
 			
 			// Fetch real token holders from blockchain
@@ -196,7 +199,9 @@
 			const animalMappings = mapWalletsToAnimals(walletAddresses);
 			
 			// Update store with contestants
+			console.log('🔄 MAIN PAGE: Setting contestants and clearing loading');
 			gameRoundActions.setContestants(animalMappings);
+			console.log('🔄 MAIN PAGE: generateContestantsForDraw() completed');
 			
 		} catch (err) {
 			console.error('Error generating contestants:', err);
@@ -344,8 +349,7 @@
 	{:else if currentStageValue === 'ROUND_START'}
 		<!-- Round Opening -->
 		<RoundOpening 
-			totalPrize={distributionAmount}
-			prizePerWinner={prizePerWinner}
+			round={$gameRound}
 			vaultBalance={vaultTotalBalance}
 			eligibleHolders={$gameRound.eligibleHoldersCount}
 			autoProgress={false}

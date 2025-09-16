@@ -18,7 +18,16 @@
   $: progressPercentage = (drawNumber / maxDraws) * 100;
   
   onMount(() => {
-    generateAndRevealContestants();
+    console.log('🎯 DrawPreparation: onMount() called, contestants:', $contestants.length);
+    // Only generate contestants if we don't have any yet
+    if ($contestants.length === 0) {
+      console.log('🎯 DrawPreparation: No contestants found, generating...');
+      generateAndRevealContestants();
+    } else {
+      console.log('🎯 DrawPreparation: Contestants already exist, skipping generation');
+      loading = false;
+      revealedContestants = $contestants;
+    }
   });
   
   async function generateAndRevealContestants() {

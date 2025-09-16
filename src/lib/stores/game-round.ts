@@ -118,8 +118,8 @@ export const gameRoundActions = {
     gameRound.update(() => ({
       ...defaultState,
       roundId,
-      status: 'active',
-      stage: 'ROUND_START',
+      status: 'active' as const,
+      stage: 'ROUND_START' as const,
       startedAt: new Date(),
       prizePool,
       stageStartTime: Date.now()
@@ -236,10 +236,15 @@ export const gameRoundActions = {
 
   // Utilities
   setLoading: (loading: boolean) => {
-    gameRound.update(state => ({
-      ...state,
-      isLoading: loading
-    }));
+    gameRound.update(state => {
+      // Prevent unnecessary updates that cause reactive loops
+      if (state.isLoading === loading) return state;
+      
+      return {
+        ...state,
+        isLoading: loading
+      };
+    });
   },
 
   setError: (error: string | null) => {
