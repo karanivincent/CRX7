@@ -48,3 +48,21 @@ export const winnerTable = pgTable("winner", {
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const distributionHistoryTable = pgTable("distribution_history", {
+  id: uuid("id").primaryKey(),
+  totalAmount: numeric("total_amount", { precision: 20, scale: 9 }).notNull(),
+  winnersAmount: numeric("winners_amount", { precision: 20, scale: 9 }).notNull(),
+  holdingAmount: numeric("holding_amount", { precision: 20, scale: 9 }).notNull(),
+  charityAmount: numeric("charity_amount", { precision: 20, scale: 9 }).notNull(),
+  // Transaction tracking
+  winnersTransactionHash: text("winners_transaction_hash"),
+  holdingTransactionHash: text("holding_transaction_hash"),
+  charityTransactionHash: text("charity_transaction_hash"),
+  // Metadata
+  executedBy: text("executed_by").notNull(), // admin wallet address
+  executedAt: timestamp("executed_at").defaultNow().notNull(),
+  status: text("status").notNull().default("pending"), // 'pending', 'completed', 'failed'
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

@@ -34,6 +34,8 @@ export const getTokenName = (config: ClientTokenConfig = defaultClientConfig) =>
 export const getTokenSymbol = (config: ClientTokenConfig = defaultClientConfig) => config.symbol;
 
 // Distribution helpers
+export const getDistributionConfig = (config: ClientTokenConfig = defaultClientConfig) => config.distribution;
+
 export const getDistributionText = (config: ClientTokenConfig = defaultClientConfig) => {
 	const { winnersPercentage, holdingPercentage, charityPercentage } = config.distribution;
 	return `${winnersPercentage}% to winners • ${holdingPercentage}% to future rounds • ${charityPercentage}% to charity`;
