@@ -21,6 +21,14 @@ vi.mock('@solana/spl-token', () => ({
 	getAccount: vi.fn()
 }));
 
+// Mock process.env for Helius API key
+Object.defineProperty(process, 'env', {
+	value: {
+		...process.env,
+		HELIUS_API_KEY: 'test-helius-api-key'
+	}
+});
+
 // Import after mocking
 const {
 	getSOLBalance,

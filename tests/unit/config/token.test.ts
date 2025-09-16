@@ -8,7 +8,9 @@ vi.mock('$env/static/private', () => ({
 	TOKEN_DECIMALS: '6',
 	ADMIN_WALLET_ADDRESS: 'AdminWalletAddress123456789',
 	HOLDING_WALLET_ADDRESS: 'HoldingWalletAddress123456789',
-	CHARITY_WALLET_ADDRESS: 'CharityWalletAddress123456789'
+	CHARITY_WALLET_ADDRESS: 'CharityWalletAddress123456789',
+	REWARD_VAULT_ADDRESS: 'RewardVaultAddress123456789',
+	HELIUS_API_KEY: 'test-helius-api-key'
 }));
 
 // Import after mocking

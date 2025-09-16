@@ -1,8 +1,11 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, getAccount } from '@solana/spl-token';
 
-// Solana RPC connection configuration
-const SOLANA_RPC_URL = 'https://api.mainnet-beta.solana.com';
+// Helius RPC connection configuration
+const HELIUS_API_KEY = process.env.HELIUS_API_KEY;
+const SOLANA_RPC_URL = HELIUS_API_KEY 
+  ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+  : 'https://api.mainnet-beta.solana.com';
 const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
 
 // Wrapped SOL mint address

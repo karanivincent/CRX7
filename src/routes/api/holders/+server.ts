@@ -2,12 +2,15 @@ import { json } from '@sveltejs/kit';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import type { RequestHandler } from './$types';
-import { TOKEN_MINT_ADDRESS, TOKEN_NAME, TOKEN_SYMBOL } from '$env/static/private';
+import { TOKEN_MINT_ADDRESS, TOKEN_NAME, TOKEN_SYMBOL, HELIUS_API_KEY } from '$env/static/private';
 
 export const GET: RequestHandler = async () => {
 	try {
-		// Connect to Solana mainnet
-		const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+		// Connect to Helius RPC
+		const rpcUrl = HELIUS_API_KEY 
+			? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`
+			: 'https://api.mainnet-beta.solana.com';
+		const connection = new Connection(rpcUrl, 'confirmed');
 		
 		const mintPublicKey = new PublicKey(TOKEN_MINT_ADDRESS);
 		

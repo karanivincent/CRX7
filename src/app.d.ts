@@ -17,4 +17,10 @@ declare global {
   }
 }
 
+declare namespace NodeJS {
+  interface ProcessEnv {
+    HELIUS_API_KEY: string;
+  }
+}
+
 export {};

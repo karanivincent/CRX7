@@ -13,7 +13,8 @@ vi.mock('@solana/spl-token', () => ({
 vi.mock('$env/static/private', () => ({
 	TOKEN_MINT_ADDRESS: 'FyB8VxxYAaVVchAgbB1kvjWdw26ovaD4ipwV1j8epump',
 	TOKEN_NAME: '$runner',
-	TOKEN_SYMBOL: 'RUNNER'
+	TOKEN_SYMBOL: 'RUNNER',
+	HELIUS_API_KEY: 'test-helius-api-key'
 }));
 
 // Import after mocking
