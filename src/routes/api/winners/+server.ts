@@ -15,11 +15,11 @@ export const GET: RequestHandler = async ({ url }) => {
         const offset = (page - 1) * limit;
         const sortBy = url.searchParams.get('sort') || 'won_at';
         const sortOrder = url.searchParams.get('order') || 'desc';
+        const drawFilter = url.searchParams.get('draw');
 
-        // Get winners with draw information
-        const { data: winners, error } = await supabase
-          .from('winner')
-          .select(`
+        // Build query - use inner join when filtering by draw
+        let selectQuery = drawFilter 
+          ? `
             id,
             wallet_address,
             prize_amount,
@@ -35,16 +35,52 @@ export const GET: RequestHandler = async ({ url }) => {
               completed_at,
               total_prize_pool
             )
-          `)
+          `
+          : `
+            id,
+            wallet_address,
+            prize_amount,
+            draw_sequence,
+            sequence_number,
+            animal_name,
+            animal_emoji,
+            won_at,
+            transaction_hash,
+            paid_at,
+            draw(
+              draw_number,
+              completed_at,
+              total_prize_pool
+            )
+          `;
+
+        let query = supabase
+          .from('winner')
+          .select(selectQuery);
+
+        // Add draw filter if specified
+        if (drawFilter) {
+          // Filter by the joined draw table's draw_number
+          query = query.filter('draw.draw_number', 'eq', parseInt(drawFilter));
+        }
+
+        const { data: winners, error } = await query
           .order(sortBy, { ascending: sortOrder === 'asc' })
           .range(offset, offset + limit - 1);
         
         if (error) throw error;
 
-        // Get total count for pagination
-        const { count, error: countError } = await supabase
+        // Get total count for pagination (with same filter)
+        let countQuery = supabase
           .from('winner')
-          .select('*', { count: 'exact', head: true });
+          .select('*, draw!inner(draw_number)', { count: 'exact', head: true });
+
+        if (drawFilter) {
+          // Use the same filter as the main query - filter by draw.draw_number
+          countQuery = countQuery.eq('draw.draw_number', parseInt(drawFilter));
+        }
+
+        const { count, error: countError } = await countQuery;
         
         if (countError) throw countError;
         

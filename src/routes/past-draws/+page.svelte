@@ -3,17 +3,24 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import Icon from '@iconify/svelte';
 	import { onMount } from 'svelte';
-	import RoundCard from '$lib/components/history/RoundCard.svelte';
-	import HistoryFilters from '$lib/components/history/HistoryFilters.svelte';
-	import StatsOverview from '$lib/components/history/StatsOverview.svelte';
+	// Removed RoundCard import - using table layout instead
+	// Removed HistoryFilters import - using simplified inline filters
+	// Removed StatsOverview import for simplified design
 	
 	let rounds: any[] = [];
 	let loading = true;
 	let error = '';
-	let expandedRounds: Set<string> = new Set();
 	let page = 1;
 	let hasMore = true;
 	let totalRounds = 0;
+	
+	// Simplified stats
+	let stats = {
+		totalDistributed: 0,
+		totalRounds: 0,
+		latestDraw: null as any
+	};
+	let statsLoading = true;
 	
 	// Filter state
 	let searchTerm = '';
@@ -26,7 +33,35 @@
 	
 	onMount(() => {
 		loadRounds();
+		loadSimplifiedStats();
 	});
+	
+	async function loadSimplifiedStats() {
+		try {
+			const [statsResponse, latestResponse] = await Promise.all([
+				fetch('/api/rounds?action=stats'),
+				fetch('/api/rounds?action=latest')
+			]);
+			
+			const [statsData, latestData] = await Promise.all([
+				statsResponse.json(),
+				latestResponse.json()
+			]);
+			
+			if (statsData.success) {
+				stats.totalDistributed = statsData.stats.totalDistributed || 0;
+				stats.totalRounds = statsData.stats.totalRounds || 0;
+			}
+			
+			if (latestData.success) {
+				stats.latestDraw = latestData.latestDraw;
+			}
+		} catch (error) {
+			console.error('Failed to load stats:', error);
+		} finally {
+			statsLoading = false;
+		}
+	}
 	
 	async function loadRounds(reset = false) {
 		if (typeof window === 'undefined') return; // Skip on server-side
@@ -72,22 +107,6 @@
 		}
 	}
 	
-	function toggleExpanded(roundId: string) {
-		if (expandedRounds.has(roundId)) {
-			expandedRounds.delete(roundId);
-		} else {
-			expandedRounds.add(roundId);
-		}
-		expandedRounds = expandedRounds; // Trigger reactivity
-	}
-	
-	function viewRoundDetails(roundId: string) {
-		// Navigate to detailed round view (could be a modal or new page)
-		console.log('View details for round:', roundId);
-		// For now, just expand the card
-		expandedRounds.add(roundId);
-		expandedRounds = expandedRounds;
-	}
 	
 	function loadMore() {
 		if (!loading && hasMore) {
@@ -136,29 +155,76 @@
 	<div class="mx-auto max-w-7xl px-6 py-24 lg:px-8">
 		<!-- Header -->
 		<div class="text-center mb-12">
-			<div class="mb-4 text-sm font-semibold text-orange-600 animate-bounce">
-				🎰 DRAW HISTORY 🎰
-			</div>
-			<h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-				Past <span class="text-orange-500">Lottery</span> Draws 📊
+			<h1 class="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl mb-4">
+				Past <span class="text-orange-500">Lottery</span> Draws
 			</h1>
-			<p class="mt-6 text-lg leading-8 text-gray-600 max-w-2xl mx-auto">
+			<p class="text-lg text-gray-600 max-w-2xl mx-auto">
 				Complete transparency. Every draw. Every winner. Every transaction.
-				<br/>
-				<span class="text-sm italic opacity-75">The most verifiable lottery in crypto 🔍</span>
 			</p>
 		</div>
 
-		<!-- Statistics Overview -->
-		<StatsOverview />
+		<!-- Simplified Statistics -->
+		<div class="bg-white rounded-lg border border-gray-200 mb-8 p-6">
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+				<!-- Total Distributed -->
+				<div class="text-center">
+					{#if statsLoading}
+						<div class="animate-pulse">
+							<div class="h-8 bg-gray-200 rounded w-20 mx-auto mb-2"></div>
+							<div class="h-4 bg-gray-200 rounded w-24 mx-auto"></div>
+						</div>
+					{:else}
+						<div class="text-3xl font-bold text-gray-900 mb-1">
+							{stats.totalDistributed.toFixed(2)} SOL
+						</div>
+						<div class="text-sm text-gray-600">Total Distributed</div>
+					{/if}
+				</div>
+				
+				<!-- Total Rounds -->
+				<div class="text-center">
+					{#if statsLoading}
+						<div class="animate-pulse">
+							<div class="h-8 bg-gray-200 rounded w-12 mx-auto mb-2"></div>
+							<div class="h-4 bg-gray-200 rounded w-20 mx-auto"></div>
+						</div>
+					{:else}
+						<div class="text-3xl font-bold text-gray-900 mb-1">
+							{stats.totalRounds}
+						</div>
+						<div class="text-sm text-gray-600">Completed Rounds</div>
+					{/if}
+				</div>
+				
+				<!-- Latest Draw -->
+				<div class="text-center">
+					{#if statsLoading}
+						<div class="animate-pulse">
+							<div class="h-8 bg-gray-200 rounded w-16 mx-auto mb-2"></div>
+							<div class="h-4 bg-gray-200 rounded w-16 mx-auto"></div>
+						</div>
+					{:else if stats.latestDraw}
+						<div class="text-3xl font-bold text-gray-900 mb-1">
+							#{stats.latestDraw.draw_number}
+						</div>
+						<div class="text-sm text-gray-600">Latest Draw</div>
+					{:else}
+						<div class="text-3xl font-bold text-gray-400 mb-1">
+							-
+						</div>
+						<div class="text-sm text-gray-600">Latest Draw</div>
+					{/if}
+				</div>
+			</div>
+		</div>
 
 		{#if rounds.length === 0 && !loading}
 			<!-- No Data State -->
 			<div class="max-w-2xl mx-auto">
-				<Card class="border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-white">
+				<Card class="border border-gray-200 bg-white">
 					<CardHeader class="text-center pb-2">
 						<div class="flex justify-center mb-4">
-							<Icon icon="mdi:history" class="h-16 w-16 text-orange-500 animate-spin-slow" />
+							<Icon icon="mdi:history" class="h-16 w-16 text-orange-500" />
 						</div>
 						<CardTitle class="text-2xl font-bold text-gray-900">
 							No Draws Yet 📜
@@ -168,9 +234,9 @@
 						</CardDescription>
 					</CardHeader>
 					<CardContent class="text-center space-y-6">
-						<div class="p-4 bg-orange-50 rounded-lg border border-orange-200">
-							<div class="font-semibold text-orange-800 mb-2">🚀 Coming Soon:</div>
-							<div class="text-sm text-orange-700">
+						<div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+							<div class="font-semibold text-gray-800 mb-2">🚀 Coming Soon:</div>
+							<div class="text-sm text-gray-600">
 								Complete draw history • Winner verification • Transaction links • Full transparency
 							</div>
 						</div>
@@ -178,14 +244,14 @@
 						<div class="flex flex-col sm:flex-row gap-4 justify-center">
 							<Button 
 								href="/"
-								class="px-6 py-3 hover:scale-105 transition-transform"
+								class="px-6 py-3"
 							>
 								🏠 Back to Home
 							</Button>
 							<Button 
 								variant="outline"
 								href="/winners"
-								class="px-6 py-3 hover:scale-105 transition-transform"
+								class="px-6 py-3"
 							>
 								🏆 Check Winners
 							</Button>
@@ -194,18 +260,46 @@
 				</Card>
 			</div>
 		{:else}
-			<!-- Filters -->
-			<HistoryFilters 
-				bind:searchTerm
-				bind:sortBy
-				bind:sortOrder
-				bind:dateFrom
-				bind:dateTo
-				bind:minPrize
-				bind:maxPrize
-				{onFiltersChange}
-				type="rounds"
-			/>
+			<!-- Simplified Filters -->
+			<div class="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+				<div class="flex flex-col sm:flex-row gap-4 items-center">
+					<!-- Search -->
+					<div class="flex-1">
+						<div class="relative">
+							<Icon icon="mdi:magnify" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+							<input
+								type="text"
+								bind:value={searchTerm}
+								placeholder="Search by draw number..."
+								class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+								on:input={onFiltersChange}
+							/>
+						</div>
+					</div>
+					
+					<!-- Sort -->
+					<div class="flex items-center gap-2">
+						<select 
+							bind:value={sortBy}
+							class="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+						>
+							<option value="completed_at">Date Completed</option>
+							<option value="draw_number">Draw Number</option>
+							<option value="total_prize_pool">Prize Pool</option>
+						</select>
+						
+						<button
+							class="px-3 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+							on:click={() => { sortOrder = sortOrder === 'asc' ? 'desc' : 'asc'; }}
+						>
+							<Icon 
+								icon={sortOrder === 'asc' ? 'mdi:sort-ascending' : 'mdi:sort-descending'} 
+								class="w-4 h-4 text-gray-600" 
+							/>
+						</button>
+					</div>
+				</div>
+			</div>
 
 			<!-- Results Summary -->
 			{#if filteredRounds.length > 0}
@@ -252,17 +346,139 @@
 				</div>
 			{/if}
 
-			<!-- Rounds Grid -->
+			<!-- Rounds Table - Desktop -->
 			{#if filteredRounds.length > 0}
-				<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
-					{#each filteredRounds as round (round.id)}
-						<RoundCard 
-							{round}
-							expanded={expandedRounds.has(round.id)}
-							onToggle={() => toggleExpanded(round.id)}
-							onViewDetails={() => viewRoundDetails(round.id)}
-						/>
-					{/each}
+				<div class="bg-white rounded-lg border border-gray-200 overflow-hidden mb-8">
+					<!-- Desktop Table View -->
+					<div class="hidden md:block overflow-x-auto">
+						<table class="w-full">
+							<thead class="bg-gray-50 border-b border-gray-200">
+								<tr>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Draw
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Date Completed
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Prize Pool
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Winners
+									</th>
+									<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Action
+									</th>
+								</tr>
+							</thead>
+							<tbody class="bg-white divide-y divide-gray-200">
+								{#each filteredRounds as round (round.id)}
+									<tr class="hover:bg-gray-50 transition-colors">
+										<!-- Draw Number -->
+										<td class="px-6 py-4 whitespace-nowrap">
+											<div class="font-semibold text-gray-900">
+												Draw #{round.draw_number}
+											</div>
+										</td>
+										
+										<!-- Date Completed -->
+										<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+											{#if round.completed_at}
+												{new Date(round.completed_at).toLocaleDateString()}
+												<div class="text-xs text-gray-500">
+													{new Date(round.completed_at).toLocaleTimeString()}
+												</div>
+											{:else}
+												<span class="text-gray-400">In Progress</span>
+											{/if}
+										</td>
+										
+										<!-- Prize Pool -->
+										<td class="px-6 py-4 whitespace-nowrap">
+											{#if round.total_prize_pool}
+												<div class="font-semibold text-gray-900">
+													{parseFloat(round.total_prize_pool).toFixed(3)} SOL
+												</div>
+											{:else}
+												<span class="text-gray-400">TBD</span>
+											{/if}
+										</td>
+										
+										<!-- Winners Count -->
+										<td class="px-6 py-4 whitespace-nowrap">
+											<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+												{round.winner?.[0]?.count || 0} winners
+											</span>
+										</td>
+										
+										<!-- Action -->
+										<td class="px-6 py-4 whitespace-nowrap">
+											<Button 
+												size="sm" 
+												variant="outline" 
+												href="/winners?draw={round.draw_number}"
+												class="text-orange-600 hover:text-orange-800 border-orange-200 hover:border-orange-300"
+											>
+												View Winners
+											</Button>
+										</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					</div>
+
+					<!-- Mobile Card View -->
+					<div class="md:hidden">
+						{#each filteredRounds as round (round.id)}
+							<div class="p-4 border-b border-gray-200 last:border-b-0">
+								<div class="flex items-center justify-between mb-3">
+									<div class="font-semibold text-gray-900">
+										Draw #{round.draw_number}
+									</div>
+									<Button 
+										size="sm" 
+										variant="outline" 
+										href="/winners?draw={round.draw_number}"
+										class="text-orange-600 hover:text-orange-800 border-orange-200 hover:border-orange-300 text-xs px-3"
+									>
+										Winners
+									</Button>
+								</div>
+
+								<div class="space-y-2 text-sm">
+									<div class="flex justify-between">
+										<span class="text-gray-600">Date:</span>
+										<span class="text-gray-900">
+											{#if round.completed_at}
+												{new Date(round.completed_at).toLocaleDateString()}
+											{:else}
+												<span class="text-gray-400">In Progress</span>
+											{/if}
+										</span>
+									</div>
+
+									<div class="flex justify-between">
+										<span class="text-gray-600">Prize Pool:</span>
+										<span class="font-semibold text-gray-900">
+											{#if round.total_prize_pool}
+												{parseFloat(round.total_prize_pool).toFixed(3)} SOL
+											{:else}
+												<span class="text-gray-400">TBD</span>
+											{/if}
+										</span>
+									</div>
+
+									<div class="flex justify-between">
+										<span class="text-gray-600">Winners:</span>
+										<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+											{round.winner?.[0]?.count || 0} winners
+										</span>
+									</div>
+								</div>
+							</div>
+						{/each}
+					</div>
 				</div>
 
 				<!-- Load More Button -->
@@ -323,8 +539,3 @@
 	</div>
 </div>
 
-<style>
-	:global(.animate-spin-slow) {
-		animation: spin 3s linear infinite;
-	}
-</style>

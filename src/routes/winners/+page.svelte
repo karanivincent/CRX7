@@ -4,6 +4,7 @@
 	import Icon from '@iconify/svelte';
 	import { getTokenDisplay, getTokenSymbol } from '$lib/config/client';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import HistoryFilters from '$lib/components/history/HistoryFilters.svelte';
 	import StatsOverview from '$lib/components/history/StatsOverview.svelte';
 	
@@ -17,7 +18,7 @@
 	let leaderboard: any[] = [];
 	let loading = true;
 	let error = '';
-	let page = 1;
+	let currentPage = 1;
 	let hasMore = true;
 	let totalWinners = 0;
 	let totalPages = 1;
@@ -33,11 +34,27 @@
 	let minPrize = '';
 	let maxPrize = '';
 	
+	// Check for draw filter from URL
+	let drawFilter = '';
+	let initialized = false;
+	
+	// Subscribe to the page store to get URL params
+	$: drawFilter = $page.url.searchParams.get('draw') || '';
+	
 	onMount(() => {
+		console.log('Draw filter on mount:', drawFilter);
+		initialized = true;
+		
+		// Always load the main winners list
 		loadWinners();
-		loadRecentWinners();
-		loadBiggestWins();
-		loadLeaderboard();
+		
+		// Only load other tabs if we're not filtering by draw
+		// (these don't make sense when viewing a specific draw)
+		if (!drawFilter) {
+			loadRecentWinners();
+			loadBiggestWins();
+			loadLeaderboard();
+		}
 	});
 	
 	async function loadWinners(reset = false) {
@@ -48,22 +65,32 @@
 		
 		if (reset) {
 			winners = [];
-			page = 1;
+			currentPage = 1;
 		}
 		
 		try {
 			const params = new URLSearchParams({
 				action: 'all',
-				page: page.toString(),
+				page: currentPage.toString(),
 				limit: '20',
 				sort: sortBy,
 				order: sortOrder
 			});
 			
+			// Add draw filter if specified
+			if (drawFilter) {
+				params.append('draw', drawFilter);
+				console.log('Loading winners for draw:', drawFilter);
+			}
+			
 			const response = await fetch(`/api/winners?${params}`);
 			const data = await response.json();
+			console.log('API response:', data.winners?.length, 'winners');
 			
 			if (data.success) {
+				console.log('Setting winners array with', data.winners.length, 'winners');
+				console.log('Draw filter is:', drawFilter);
+				
 				if (reset) {
 					winners = data.winners;
 				} else {
@@ -72,6 +99,8 @@
 					const newWinners = data.winners.filter(w => !existingIds.has(w.id));
 					winners = [...winners, ...newWinners];
 				}
+				
+				console.log('Winners array now has', winners.length, 'items');
 				
 				totalWinners = data.pagination.total;
 				totalPages = data.pagination.totalPages;
@@ -128,32 +157,36 @@
 	
 	function loadMore() {
 		if (!loading && hasMore && activeTab === 'all') {
-			page++;
+			currentPage++;
 			loadWinners();
 		}
 	}
 	
 	function goToPage(newPage: number) {
-		if (newPage >= 1 && newPage <= totalPages && newPage !== page && !loading) {
-			page = newPage;
+		if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage && !loading) {
+			currentPage = newPage;
 			loadWinners(true); // Always reset when going to a specific page
 		}
 	}
 	
 	function nextPage() {
-		if (page < totalPages) {
-			goToPage(page + 1);
+		if (currentPage < totalPages) {
+			goToPage(currentPage + 1);
 		}
 	}
 	
 	function prevPage() {
-		if (page > 1) {
-			goToPage(page - 1);
+		if (currentPage > 1) {
+			goToPage(currentPage - 1);
 		}
 	}
 	
 	function onFiltersChange() {
-		page = 1; // Reset to first page when filters change
+		// Don't trigger filter changes when we have a draw filter
+		// (the backend is already filtering)
+		if (drawFilter) return;
+		
+		currentPage = 1; // Reset to first page when filters change
 		loadWinners(true);
 	}
 	
@@ -164,19 +197,20 @@
 			sortBy = field;
 			sortOrder = 'desc';
 		}
-		page = 1; // Reset to first page when sorting changes
+		currentPage = 1; // Reset to first page when sorting changes
 		loadWinners(true); // Reload data with new sorting
 	}
 	
 	function setActiveTab(tab: string) {
 		activeTab = tab;
-		if (tab === 'all') {
+		if (tab === 'all' && !drawFilter) {
 			loadWinners(true);
 		}
 	}
 	
 	// Filter winners client-side (for demo purposes)
-	$: filteredWinners = winners.filter(winner => {
+	// When filtering by draw, the backend already filters, so don't filter client-side
+	$: filteredWinners = drawFilter ? winners : winners.filter(winner => {
 		if (searchTerm && !winner.wallet_address.toLowerCase().includes(searchTerm.toLowerCase())) {
 			return false;
 		}
@@ -205,6 +239,8 @@
 	                 activeTab === 'recent' ? recentWinners :
 	                 activeTab === 'biggest' ? biggestWins :
 	                 activeTab === 'leaderboard' ? leaderboard : [];
+	
+	$: console.log('Current data has', currentData.length, 'items, drawFilter:', drawFilter);
 </script>
 
 <svelte:head>
@@ -273,48 +309,64 @@
 				</Card>
 			</div>
 		{:else}
-			<!-- Tab Navigation -->
-			<div class="flex flex-wrap justify-center gap-2 mb-8">
-				<Button
-					variant={activeTab === 'all' ? 'default' : 'outline'}
-					size="sm"
-					on:click={() => setActiveTab('all')}
-					class="px-4 py-2"
-				>
-					<Icon icon="mdi:account-group" class="w-4 h-4 mr-2" />
-					All Winners ({totalWinners})
-				</Button>
-				
-				<Button
-					variant={activeTab === 'recent' ? 'default' : 'outline'}
-					size="sm"
-					on:click={() => setActiveTab('recent')}
-					class="px-4 py-2"
-				>
-					<Icon icon="mdi:clock" class="w-4 h-4 mr-2" />
-					Recent Wins
-				</Button>
-				
-				<Button
-					variant={activeTab === 'biggest' ? 'default' : 'outline'}
-					size="sm"
-					on:click={() => setActiveTab('biggest')}
-					class="px-4 py-2"
-				>
-					<Icon icon="mdi:trophy" class="w-4 h-4 mr-2" />
-					Biggest Wins
-				</Button>
-				
-				<Button
-					variant={activeTab === 'leaderboard' ? 'default' : 'outline'}
-					size="sm"
-					on:click={() => setActiveTab('leaderboard')}
-					class="px-4 py-2"
-				>
-					<Icon icon="mdi:podium" class="w-4 h-4 mr-2" />
-					Leaderboard
-				</Button>
-			</div>
+			<!-- Tab Navigation (hide when filtering by draw) -->
+			{#if !drawFilter}
+				<div class="flex flex-wrap justify-center gap-2 mb-8">
+					<Button
+						variant={activeTab === 'all' ? 'default' : 'outline'}
+						size="sm"
+						on:click={() => setActiveTab('all')}
+						class="px-4 py-2"
+					>
+						<Icon icon="mdi:account-group" class="w-4 h-4 mr-2" />
+						All Winners ({totalWinners})
+					</Button>
+					
+					<Button
+						variant={activeTab === 'recent' ? 'default' : 'outline'}
+						size="sm"
+						on:click={() => setActiveTab('recent')}
+						class="px-4 py-2"
+					>
+						<Icon icon="mdi:clock" class="w-4 h-4 mr-2" />
+						Recent Wins
+					</Button>
+					
+					<Button
+						variant={activeTab === 'biggest' ? 'default' : 'outline'}
+						size="sm"
+						on:click={() => setActiveTab('biggest')}
+						class="px-4 py-2"
+					>
+						<Icon icon="mdi:trophy" class="w-4 h-4 mr-2" />
+						Biggest Wins
+					</Button>
+					
+					<Button
+						variant={activeTab === 'leaderboard' ? 'default' : 'outline'}
+						size="sm"
+						on:click={() => setActiveTab('leaderboard')}
+						class="px-4 py-2"
+					>
+						<Icon icon="mdi:podium" class="w-4 h-4 mr-2" />
+						Leaderboard
+					</Button>
+				</div>
+			{/if}
+
+			<!-- Draw Filter Indicator -->
+			{#if drawFilter}
+				<div class="mb-4">
+					<div class="inline-flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+						<Icon icon="mdi:filter" class="w-4 h-4" />
+						Filtering by Draw #{drawFilter}
+						<a href="/winners" class="ml-2 text-orange-600 hover:text-orange-800 flex items-center gap-1">
+							<Icon icon="mdi:close" class="w-5 h-5" />
+							Clear
+						</a>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Filters (only for 'all' tab) -->
 			{#if activeTab === 'all'}
@@ -610,18 +662,18 @@
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={page <= 1 || loading}
+								disabled={currentPage <= 1 || loading}
 								on:click={prevPage}
 							>
 								Previous
 							</Button>
 							<span class="text-sm text-gray-700 self-center">
-								Page {page} of {totalPages}
+								Page {currentPage} of {totalPages}
 							</span>
 							<Button
 								variant="outline"
 								size="sm"
-								disabled={page >= totalPages || loading}
+								disabled={currentPage >= totalPages || loading}
 								on:click={nextPage}
 							>
 								Next
@@ -631,9 +683,9 @@
 							<div>
 								<p class="text-sm text-gray-700">
 									Showing
-									<span class="font-medium">{(page - 1) * pageSize + 1}</span>
+									<span class="font-medium">{(currentPage - 1) * pageSize + 1}</span>
 									to
-									<span class="font-medium">{Math.min(page * pageSize, totalWinners)}</span>
+									<span class="font-medium">{Math.min(currentPage * pageSize, totalWinners)}</span>
 									of
 									<span class="font-medium">{totalWinners}</span>
 									results
@@ -645,7 +697,7 @@
 									<Button
 										variant="outline"
 										size="sm"
-										disabled={page <= 1 || loading}
+										disabled={currentPage <= 1 || loading}
 										on:click={prevPage}
 										class="rounded-l-md"
 									>
@@ -656,12 +708,12 @@
 									<!-- Page numbers -->
 									{#each Array.from({length: Math.min(7, totalPages)}, (_, i) => {
 										if (totalPages <= 7) return i + 1;
-										if (page <= 4) return i + 1;
-										if (page > totalPages - 4) return totalPages - 6 + i;
-										return page - 3 + i;
+										if (currentPage <= 4) return i + 1;
+										if (currentPage > totalPages - 4) return totalPages - 6 + i;
+										return currentPage - 3 + i;
 									}) as pageNum}
 										<Button
-											variant={pageNum === page ? "default" : "outline"}
+											variant={pageNum === currentPage ? "default" : "outline"}
 											size="sm"
 											disabled={loading}
 											on:click={() => goToPage(pageNum)}
@@ -675,7 +727,7 @@
 									<Button
 										variant="outline"
 										size="sm"
-										disabled={page >= totalPages || loading}
+										disabled={currentPage >= totalPages || loading}
 										on:click={nextPage}
 										class="rounded-r-md"
 									>
