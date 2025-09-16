@@ -15,6 +15,13 @@
       "when": 1757967500363,
       "tag": "0001_red_thing",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1758030181214,
+      "tag": "0002_normal_ultron",
+      "breakpoints": true
     }
   ]
 }

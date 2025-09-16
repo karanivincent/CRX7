@@ -13,6 +13,9 @@ export const drawTable = pgTable("draw", {
   scheduledAt: timestamp("scheduled_at").notNull(),
   executedAt: timestamp("executed_at"),
   status: text("status").notNull().default("scheduled"), // 'scheduled', 'active', 'completed', 'cancelled'
+  // Stage persistence for recovery
+  currentStage: text("current_stage").default("IDLE"), // Current game show stage
+  currentDrawNumber: integer("current_draw_number").default(0), // Current draw number (1-7)
   totalParticipants: integer("total_participants").default(0),
   totalPrizePool: numeric("total_prize_pool", { precision: 20, scale: 9 }).default("0"),
   winnersCount: integer("winners_count").default(0),

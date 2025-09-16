@@ -11,10 +11,15 @@
 	export let onSpinStart: () => void = () => {};
 	export let size: 'normal' | 'large' | 'xlarge' = 'large';
 	export let showLegend: boolean = true;
+	export let autoSpin: boolean = false; // New: Auto-spin on mount
+	export let spinDelay: number = 1000; // Delay before auto-spin starts
 	
 	let wheelElement: HTMLElement;
 	let rotation = 0;
 	let spinDuration = 4000; // 4 seconds for dramatic effect
+	let isAccelerating = false;
+	let showSparkles = false;
+	let celebrationMode = false;
 	
 	// Enhanced colors for wheel segments - more vibrant
 	const segmentColors = [
@@ -45,6 +50,13 @@
 	$: if (candidates.length > 0) {
 		animalMappings = mapWalletsToAnimals(candidates);
 		animalLegend = createAnimalLegend(animalMappings);
+		
+		// Auto-spin if enabled and not already spinning
+		if (autoSpin && !isSpinning) {
+			setTimeout(() => {
+				spinWheel();
+			}, spinDelay);
+		}
 	}
 	
 	function getAnimalForCandidate(address: string): string {
@@ -62,28 +74,41 @@
 		
 		onSpinStart();
 		isSpinning = true;
+		isAccelerating = true;
+		showSparkles = true;
+		celebrationMode = false;
 		
 		// Generate random rotation (multiple full spins + random position)
-		const spins = 5 + Math.random() * 5; // 5-10 full rotations
+		const spins = 6 + Math.random() * 4; // 6-10 full rotations for more drama
 		const finalRotation = spins * 360 + Math.random() * 360;
 		rotation = finalRotation;
 		
-		// Animate the wheel
+		// Enhanced animation with dramatic easing
 		if (wheelElement) {
 			wheelElement.style.transform = `rotate(${rotation}deg)`;
-			wheelElement.style.transition = `transform ${spinDuration}ms cubic-bezier(0.17, 0.67, 0.12, 0.99)`;
+			wheelElement.style.transition = `transform ${spinDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+			
+			// Add pulsing effect during acceleration
+			wheelElement.style.filter = 'drop-shadow(0 0 20px rgba(255, 107, 53, 0.8))';
 		}
+		
+		// Turn off acceleration effect halfway through
+		setTimeout(() => {
+			isAccelerating = false;
+			showSparkles = false;
+			if (wheelElement) {
+				wheelElement.style.filter = 'none';
+			}
+		}, spinDuration / 2);
 		
 		// Determine winner after spin completes
 		setTimeout(() => {
 			const segmentAngle = 360 / candidates.length;
 			
 			// Calculate which segment is at the top (12 o'clock position)
-			// The wheel rotates, so we need to find what segment ended up at the top
 			const currentRotation = rotation % 360;
 			
 			// Since segments start at -90 degrees (top), we need to account for that
-			// and find which segment is now at 0 degrees (12 o'clock)
 			let adjustedRotation = (360 - currentRotation) % 360;
 			
 			// Find which segment index corresponds to the top position
@@ -91,13 +116,24 @@
 			const selectedWinner = candidates[winnerIndex] || candidates[0];
 			const selectedAnimal = getAnimalNameForCandidate(selectedWinner);
 			
-			console.log('Debug - Rotation:', rotation, 'Adjusted:', adjustedRotation, 'Winner Index:', winnerIndex, 'Winner:', selectedAnimal);
+			// Start celebration mode
+			celebrationMode = true;
+			
+			// Add winner highlight effect
+			if (wheelElement) {
+				wheelElement.style.filter = 'drop-shadow(0 0 30px rgba(34, 197, 94, 0.8)) brightness(1.1)';
+				setTimeout(() => {
+					if (wheelElement) {
+						wheelElement.style.filter = 'none';
+					}
+				}, 2000);
+			}
 			
 			winner = selectedWinner;
 			winnerAnimal = selectedAnimal;
 			isSpinning = false;
 			onSpinComplete(selectedWinner, selectedAnimal);
-		}, spinDuration);
+		}, spinDuration + 500); // Add slight delay for dramatic effect
 	}
 	
 	onMount(() => {
@@ -114,9 +150,40 @@
 	$: segmentAngle = candidates.length > 0 ? 360 / candidates.length : 0;
 </script>
 
-<div class="flex flex-col items-center space-y-8">
+<div class="flex flex-col items-center space-y-8 relative">
+	
+	<!-- Sparkle Effects -->
+	{#if showSparkles}
+		{#each Array(12) as _, i}
+			<div 
+				class="absolute w-2 h-2 bg-yellow-400 rounded-full animate-ping"
+				style="
+					left: {50 + 40 * Math.cos((i * 30) * Math.PI / 180)}%; 
+					top: {50 + 40 * Math.sin((i * 30) * Math.PI / 180)}%;
+					animation-delay: {i * 100}ms;
+				"
+			></div>
+		{/each}
+	{/if}
+	
+	<!-- Celebration Confetti -->
+	{#if celebrationMode}
+		{#each Array(20) as _, i}
+			<div 
+				class="absolute w-1 h-4 animate-bounce"
+				style="
+					left: {Math.random() * 100}%; 
+					top: {Math.random() * 100}%;
+					background: linear-gradient(45deg, #ff6b35, #f7931e, #ffd23f, #06ffa5);
+					animation-delay: {i * 50}ms;
+					animation-duration: {1 + Math.random()}s;
+				"
+			></div>
+		{/each}
+	{/if}
+	
 	<!-- Wheel Container -->
-	<div class="relative">
+	<div class="relative {isAccelerating ? 'scale-105 transition-transform duration-1000' : ''}">
 		<!-- Large Fixed Pointer at 12 o'clock (always visible, more prominent when winner selected) -->
 		<div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-4 z-30">
 			<!-- Large winning pointer triangle -->
@@ -135,7 +202,9 @@
 		</div>
 		
 		<!-- Spinning Wheel -->
-		<div class="relative {sizeClasses[size]} rounded-full overflow-hidden shadow-2xl border-8 border-orange-300">
+		<div class="relative {sizeClasses[size]} rounded-full overflow-hidden shadow-2xl border-8 
+			{isSpinning ? 'border-yellow-400 animate-pulse' : celebrationMode ? 'border-green-400' : 'border-orange-300'} 
+			transition-all duration-300">
 			<svg 
 				bind:this={wheelElement}
 				class="w-full h-full drop-shadow-lg" 

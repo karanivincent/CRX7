@@ -5,6 +5,8 @@ import {
   getNextScheduledDraw,
   getLatestDraw,
   updateDrawStatus,
+  updateDrawStage,
+  getDrawWithState,
   addParticipants,
   getDrawParticipants,
   clearDrawParticipants,
@@ -26,7 +28,9 @@ export {
   getLatestWinners,
   getNextDrawNumber,
   markWinnerPaid,
-  getDashboardData
+  getDashboardData,
+  updateDrawStage,
+  getDrawWithState
 };
 
 // Draw management functions for admin/system use

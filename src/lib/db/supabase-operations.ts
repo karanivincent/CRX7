@@ -85,6 +85,42 @@ export async function updateDrawStatus(drawId: string, status: string, executedA
   return draw;
 }
 
+// Stage persistence functions
+export async function updateDrawStage(drawId: string, stage: string, currentDrawNumber: number) {
+  if (!drawId || drawId.trim() === '') {
+    throw new Error('drawId is required and cannot be empty');
+  }
+  
+  const { data: draw, error } = await supabase
+    .from('draw')
+    .update({
+      current_stage: stage,
+      current_draw_number: currentDrawNumber,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', drawId)
+    .select()
+    .single();
+    
+  if (error) throw error;
+  return draw;
+}
+
+export async function getDrawWithState(drawId: string) {
+  if (!drawId || drawId.trim() === '') {
+    throw new Error('drawId is required and cannot be empty');
+  }
+  
+  const { data: draw, error } = await supabase
+    .from('draw')
+    .select('*')
+    .eq('id', drawId)
+    .single();
+    
+  if (error) throw error;
+  return draw;
+}
+
 export async function getNextDrawNumber(): Promise<number> {
   const { data: latestDraw, error } = await supabase
     .from('draw')
