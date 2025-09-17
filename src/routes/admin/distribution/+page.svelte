@@ -12,6 +12,8 @@
 	import AdminSidebar from '$lib/components/admin/admin-sidebar.svelte';
 	import { browser } from '$app/environment';
 	import { isTestMode } from '$lib/config/test-wallets';
+	import ToastContainer from '$lib/components/ui/toast-container.svelte';
+	import { showSuccess, showError } from '$lib/stores/toast';
 	
 	// Dynamically import Icon to avoid SSR issues
 	let Icon: any;
@@ -166,7 +168,14 @@
 			const data = await response.json();
 			
 			if (data.success) {
-				alert(`Distribution executed successfully!\n\n${data.simulation ? '(Simulation mode)' : ''}\nTransaction IDs:\n${data.transactionIds?.join('\n') || 'None'}`);
+				// Show success toast with transaction details
+				const transactionDetails = data.transactionIds || [];
+				showSuccess('Distribution executed successfully!', {
+					title: `Distribution Complete ${data.simulation ? '(Simulation)' : ''}`,
+					details: transactionDetails.length > 0 ? transactionDetails : ['No transaction IDs available'],
+					duration: 8000 // Longer duration for important success message
+				});
+				
 				// Refresh balance, pending winners, and history after distribution
 				await fetchAdminBalance();
 				await fetchPendingWinners();
@@ -254,15 +263,15 @@
 			const data = await response.json();
 			
 			if (data.success) {
-				alert(`Successfully cleared ${data.cleared.count} pending winners (${data.cleared.totalAmountFormatted})`);
+				showSuccess(`Successfully cleared ${data.cleared.count} pending winners (${data.cleared.totalAmountFormatted})`);
 				// Refresh the pending winners list
 				await fetchPendingWinners();
 			} else {
-				alert(`Failed to clear pending winners: ${data.error}`);
+				showError(`Failed to clear pending winners: ${data.error}`);
 			}
 		} catch (err) {
 			console.error('Error clearing pending winners:', err);
-			alert('Error clearing pending winners. Please try again.');
+			showError('Error clearing pending winners. Please try again.');
 		} finally {
 			loadingWinners = false;
 		}
@@ -278,7 +287,7 @@
 
 	function handleRetryError(event) {
 		console.error('Retry error:', event.detail.error);
-		alert(`Failed to retry distribution: ${event.detail.error}`);
+		showError(`Failed to retry distribution: ${event.detail.error}`);
 	}
 
 	onMount(() => {
@@ -296,6 +305,8 @@
 	<AdminSidebar />
 	
 	<main class="flex-1 p-8">
+		<!-- Toast Container -->
+		<ToastContainer />
 		<div class="max-w-6xl mx-auto space-y-8">
 			<!-- Test Mode Banner -->
 			{#if isTestMode()}
