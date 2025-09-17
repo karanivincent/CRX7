@@ -42,9 +42,6 @@
 				</a>
 
 				<div class="flex items-center gap-4">
-					<a href="/leaderboard" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
-						🏆 Leaderboard
-					</a>
 					<a href="/past-draws" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
 						📊 Past Draws
 					</a>
@@ -55,10 +52,7 @@
 						❓ How it works
 					</a>
 					{#if session !== null}
-						<Button href="/admin" variant="outline" size="sm">Admin</Button>
 						<Button href="/auth/logout" variant="ghost" size="sm">Logout</Button>
-					{:else}
-						<Button href="/auth/login" size="sm">Admin Login</Button>
 					{/if}
 				</div>
 			</div>
