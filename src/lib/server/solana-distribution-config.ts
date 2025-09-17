@@ -1,5 +1,5 @@
 // Distribution configuration for Solana transactions
-import { TEST_WALLETS, isTestMode } from '../config/test-wallets';
+import { TEST_WALLETS, isTestMode, useTestDistributionWallets } from '../config/test-wallets';
 
 export const DISTRIBUTION_WALLETS = {
   // Production wallet addresses from environment variables
@@ -9,8 +9,9 @@ export const DISTRIBUTION_WALLETS = {
 
 // Get distribution wallets based on current mode (test vs production)
 export function getDistributionWallets() {
-  // In test mode, use test wallets for holding and charity
-  if (isTestMode() && TEST_WALLETS.length >= 2) {
+  // Check if we should use test wallets for distribution destinations
+  if (useTestDistributionWallets() && TEST_WALLETS.length >= 2) {
+    console.log('🧪 Using test wallets for holding/charity distribution');
     return {
       holdingWallet: TEST_WALLETS[0].address, // Use BonkBot for holding
       charityWallet: TEST_WALLETS[1].address, // Use OldBullX for charity
@@ -20,11 +21,14 @@ export function getDistributionWallets() {
     };
   }
   
-  // Production mode - use configured wallets
+  // Use real distribution wallets (default behavior)
+  console.log('💰 Using real holding and charity wallets');
   return {
     holdingWallet: DISTRIBUTION_WALLETS.HOLDING_WALLET,
     charityWallet: DISTRIBUTION_WALLETS.CHARITY_WALLET,
-    testMode: false
+    testMode: false,
+    holdingWalletName: 'Holding Wallet',
+    charityWalletName: 'Charity Wallet'
   };
 }
 
@@ -32,7 +36,7 @@ export function getDistributionWallets() {
 export function validateDistributionWallets() {
   const wallets = getDistributionWallets();
   
-  // In test mode, always valid if we have test wallets
+  // In test distribution mode, always valid if we have test wallets
   if (wallets.testMode) {
     console.log('✅ Using test mode distribution wallets:', {
       holding: wallets.holdingWalletName,
@@ -41,7 +45,7 @@ export function validateDistributionWallets() {
     return true;
   }
   
-  // Production mode validation
+  // Real wallet validation
   if (wallets.holdingWallet.includes('PLACEHOLDER')) {
     console.warn('⚠️  Holding wallet is not configured (using placeholder)');
     return false;
@@ -51,6 +55,11 @@ export function validateDistributionWallets() {
     console.warn('⚠️  Charity wallet is not configured (using placeholder)');
     return false;
   }
+  
+  console.log('✅ Using real distribution wallets:', {
+    holding: `${wallets.holdingWallet.slice(0, 8)}...${wallets.holdingWallet.slice(-8)}`,
+    charity: `${wallets.charityWallet.slice(0, 8)}...${wallets.charityWallet.slice(-8)}`
+  });
   
   return true;
 }

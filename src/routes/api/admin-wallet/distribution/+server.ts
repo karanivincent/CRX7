@@ -14,7 +14,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     const body = await request.json();
-    const { distributionAmount } = body;
+    const { distributionAmount, winnersData } = body;
 
     // Validate distribution amount
     if (!distributionAmount || isNaN(Number(distributionAmount)) || Number(distributionAmount) <= 0) {
@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Execute distribution using the distribution service
-    const result = await executeDistribution(amount, ADMIN_WALLET_ADDRESS);
+    const result = await executeDistribution(amount, ADMIN_WALLET_ADDRESS, winnersData);
 
     if (!result.success) {
       return json({

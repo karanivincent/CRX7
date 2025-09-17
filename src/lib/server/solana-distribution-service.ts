@@ -1,6 +1,8 @@
 import { getDistributionConfig } from '$lib/config/client';
 import { getDistributionWallets, validateDistributionWallets } from './solana-distribution-config';
 import { supabase } from '$lib/db/index';
+import { executeDistributionTransactions, validateTransactionCapabilities } from './solana-transaction-service';
+import { ADMIN_WALLET_PRIVATE_KEY } from '$env/static/private';
 
 interface DistributionResult {
   success: boolean;
@@ -16,12 +18,13 @@ interface DistributionResult {
 }
 
 /**
- * Execute distribution using available services
- * For now, this will simulate transactions until private keys are configured
+ * Execute distribution using real Solana transactions with MEV protection
+ * Falls back to simulation mode only when private keys are not configured
  */
 export async function executeDistribution(
   totalAmount: number,
-  adminWalletAddress: string
+  adminWalletAddress: string,
+  winnersData?: Array<{ walletAddress: string; amount: number }>
 ): Promise<DistributionResult> {
   try {
     console.log('Starting distribution execution:', {
@@ -32,8 +35,18 @@ export async function executeDistribution(
     const distributionConfig = getDistributionConfig();
     const distributionWallets = getDistributionWallets();
     
-    // Check if real wallets are configured
+    // Check if real wallets and private keys are configured
     const walletsConfigured = validateDistributionWallets();
+    const privateKeyConfigured = !!ADMIN_WALLET_PRIVATE_KEY;
+    const canExecuteRealTransactions = walletsConfigured && privateKeyConfigured;
+    
+    // Validate transaction capabilities if we can execute real transactions
+    if (canExecuteRealTransactions) {
+      const validation = await validateTransactionCapabilities();
+      if (!validation.valid) {
+        throw new Error(`Transaction validation failed: ${validation.error}`);
+      }
+    }
     
     // Calculate distribution amounts
     const winnersAmount = totalAmount * (distributionConfig.winnersPercentage / 100);
@@ -62,45 +75,113 @@ export async function executeDistribution(
       };
     }
 
-    // Calculate amount per winner
-    const amountPerWinner = winnersAmount / pendingWinners.length;
+    // Use provided winner amounts or calculate default amount per winner
+    let winnerAmountMap: Map<string, number> = new Map();
+    let amountPerWinner = winnersAmount / pendingWinners.length; // Default fallback
+    
+    if (winnersData && winnersData.length > 0) {
+      // Use manually specified amounts
+      winnersData.forEach(wd => {
+        winnerAmountMap.set(wd.walletAddress, wd.amount);
+      });
+      console.log('Using manually specified winner amounts:', winnersData);
+    } else {
+      // Use equal distribution as fallback
+      pendingWinners.forEach(winner => {
+        winnerAmountMap.set(winner.wallet_address, amountPerWinner);
+      });
+      console.log(`Using equal distribution: ${amountPerWinner} SOL per winner`);
+    }
 
-    // TODO: Skip distribution history for now since the table doesn't exist
-    // Create a mock history record for local tracking
+    // Create distribution history record
     const historyRecord = {
-      id: crypto.randomUUID(),
       total_amount: totalAmount.toString(),
       winners_amount: winnersAmount.toString(),
       holding_amount: holdingAmount.toString(),
       charity_amount: charityAmount.toString(),
       executed_by: adminWalletAddress,
       status: 'pending',
-      notes: walletsConfigured 
-        ? 'Ready for real transaction execution' 
-        : 'Simulation mode - distribution wallets not configured'
+      notes: canExecuteRealTransactions 
+        ? 'Executing real Solana transactions' 
+        : `Simulation mode - ${!walletsConfigured ? 'distribution wallets not configured' : 'admin private key not configured'}`
     };
     
-    console.log('Distribution history record created locally (table not available):', historyRecord);
+    // Save to database
+    let historyId: string | null = null;
+    try {
+      const { data: savedHistory, error: historyError } = await supabase
+        .from('distribution_history')
+        .insert(historyRecord)
+        .select()
+        .single();
+      
+      if (historyError) {
+        console.warn('Failed to save distribution history:', historyError);
+        console.log('Distribution history record created locally (database unavailable):', historyRecord);
+      } else {
+        historyId = savedHistory.id;
+        console.log('✅ Distribution history record saved to database:', savedHistory.id);
+      }
+    } catch (dbError) {
+      console.warn('Database error saving history:', dbError);
+      console.log('Distribution history record created locally (database error):', historyRecord);
+    }
 
-    // For now, simulate the transactions
-    // TODO: Replace with actual Solana transactions when private keys are configured
+    let transactions;
+    let isSimulation = false;
     
-    const simulatedTransactions = {
-      winnersTransactionHash: `sim-winners-${Date.now()}`,
-      holdingTransactionHash: `sim-holding-${Date.now()}`,
-      charityTransactionHash: `sim-charity-${Date.now()}`
-    };
+    if (canExecuteRealTransactions) {
+      // Execute real Solana transactions
+      console.log('🚀 Executing real Solana transactions with MEV protection');
+      
+      const winnersDataForTransaction = pendingWinners.map(winner => ({
+        walletAddress: winner.wallet_address,
+        amount: winnerAmountMap.get(winner.wallet_address) || amountPerWinner
+      }));
+      
+      const result = await executeDistributionTransactions(
+        winnersDataForTransaction,
+        distributionWallets.holdingWallet,
+        holdingAmount,
+        distributionWallets.charityWallet,
+        charityAmount
+      );
+      
+      if (!result.success) {
+        throw new Error(`Real transaction execution failed: ${result.error}`);
+      }
+      
+      transactions = result.transactions;
+      
+      // Log transaction costs
+      if (result.totalPriorityFees) {
+        console.log(`💰 Total priority fees paid: ${result.totalPriorityFees} micro-lamports`);
+      }
+      
+    } else {
+      // Fall back to simulation mode
+      console.log('⚠️  Falling back to simulation mode');
+      isSimulation = true;
+      
+      transactions = {
+        winnersTransactionHash: `sim-winners-${Date.now()}`,
+        holdingTransactionHash: `sim-holding-${Date.now()}`,
+        charityTransactionHash: `sim-charity-${Date.now()}`
+      };
+      
+      // Simulate processing delay for UX
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }
 
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // Update winners with simulated transaction hashes
+    // Update winners with transaction hashes and actual distributed amounts
     for (const winner of pendingWinners) {
+      const actualAmount = winnerAmountMap.get(winner.wallet_address) || amountPerWinner;
       const { error: updateError } = await supabase
         .from('winner')
         .update({
-          transaction_hash: simulatedTransactions.winnersTransactionHash,
-          paid_at: new Date().toISOString()
+          transaction_hash: transactions.winnersTransactionHash,
+          paid_at: new Date().toISOString(),
+          prize_amount: actualAmount.toFixed(9) // Update with actual distributed amount
         })
         .eq('id', winner.id);
 
@@ -109,25 +190,46 @@ export async function executeDistribution(
       }
     }
 
-    // TODO: Skip distribution history update since the table doesn't exist
-    // Update the local record for logging
-    historyRecord.status = 'completed';
-    console.log('Distribution history updated locally:', {
+    // Update distribution history with results
+    const historyUpdate = {
       status: 'completed',
-      transactions: simulatedTransactions
-    });
+      winners_transaction_hash: transactions.winnersTransactionHash,
+      holding_transaction_hash: transactions.holdingTransactionHash,
+      charity_transaction_hash: transactions.charityTransactionHash,
+      notes: `${isSimulation ? 'Simulation' : 'Real'} transactions completed - Winners: ${pendingWinners.length}, Amount per winner: ${amountPerWinner} SOL`
+    };
+    
+    if (historyId) {
+      try {
+        const { error: updateError } = await supabase
+          .from('distribution_history')
+          .update(historyUpdate)
+          .eq('id', historyId);
+        
+        if (updateError) {
+          console.warn('Failed to update distribution history:', updateError);
+        } else {
+          console.log('✅ Distribution history updated in database:', historyId);
+        }
+      } catch (dbError) {
+        console.warn('Database error updating history:', dbError);
+      }
+    } else {
+      console.log('Distribution history updated locally:', historyUpdate);
+    }
 
     console.log('Distribution completed:', {
       winnersCount: pendingWinners.length,
       amountPerWinner,
       totalDistributed: totalAmount,
-      simulation: true
+      simulation: isSimulation,
+      mode: isSimulation ? 'simulation' : 'real'
     });
 
     return {
       success: true,
-      simulation: true, // Will be false when real transactions are implemented
-      transactions: simulatedTransactions,
+      simulation: isSimulation,
+      transactions,
       winnersCount: pendingWinners.length,
       totalDistributed: totalAmount
     };
@@ -136,7 +238,7 @@ export async function executeDistribution(
     console.error('Error executing distribution:', error);
     return {
       success: false,
-      simulation: true,
+      simulation: true, // Error cases always report as simulation for safety
       transactions: {},
       error: error instanceof Error ? error.message : 'Unknown error'
     };

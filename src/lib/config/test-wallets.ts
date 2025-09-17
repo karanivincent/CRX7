@@ -128,7 +128,22 @@ export function validateTestWallets(): { valid: boolean; errors: string[] } {
 
 // Get test mode status
 export function isTestMode(): boolean {
-  // In development, we're always in test mode
-  // In production, this could be controlled by an environment variable
-  return true; // For now, always test mode during development
+  // Check environment variable first
+  if (typeof process !== 'undefined' && process.env?.USE_TEST_MODE !== undefined) {
+    return process.env.USE_TEST_MODE === 'true';
+  }
+  
+  // Default to development mode check
+  return process.env.NODE_ENV === 'development';
+}
+
+// Check if we should use test wallets for distribution destinations
+export function useTestDistributionWallets(): boolean {
+  // Separate control for distribution wallets vs winner wallets
+  if (typeof process !== 'undefined' && process.env?.USE_TEST_DISTRIBUTION_WALLETS !== undefined) {
+    return process.env.USE_TEST_DISTRIBUTION_WALLETS === 'true';
+  }
+  
+  // Default: use real distribution wallets even in test mode
+  return false;
 }

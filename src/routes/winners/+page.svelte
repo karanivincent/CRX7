@@ -7,6 +7,7 @@
 	import { page } from '$app/stores';
 	import HistoryFilters from '$lib/components/history/HistoryFilters.svelte';
 	import StatsOverview from '$lib/components/history/StatsOverview.svelte';
+	import { getSolscanTxUrl, getSolscanAccountUrl, formatTxHash } from '$lib/utils/solscan';
 	
 	// Cache the config values
 	const tokenDisplay = getTokenDisplay();
@@ -578,10 +579,10 @@
 													</div>
 												{:else}
 													<div class="font-bold text-green-600">
-														{parseFloat(winner.prize_amount || 0).toFixed(3)} SOL
+														{parseFloat(winner.prize_amount || 0).toFixed(6)} SOL
 													</div>
 													<div class="text-xs text-gray-500">
-														≈ ${(parseFloat(winner.prize_amount || 0) * 150).toFixed(2)}
+														≈ ${(parseFloat(winner.prize_amount || 0) * 150).toFixed(4)}
 													</div>
 												{/if}
 											</td>
@@ -616,33 +617,44 @@
 											
 											<!-- Verify Actions -->
 											<td class="px-6 py-4 whitespace-nowrap">
-												<div class="flex items-center gap-2">
-													<!-- Solscan Link -->
+												<div class="flex items-center gap-3">
+													<!-- Wallet Address Link -->
 													<a 
-														href="https://solscan.io/account/{winner.wallet_address}"
+														href={getSolscanAccountUrl(winner.wallet_address)}
 														target="_blank"
 														rel="noopener noreferrer"
-														class="text-blue-600 hover:text-blue-800 transition-colors"
-														title="View on Solscan"
+														class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-200"
+														title="View wallet on Solscan"
 													>
-														<Icon icon="mdi:open-in-new" class="w-4 h-4" />
+														<Icon icon="mdi:wallet" class="w-4 h-4" />
 													</a>
 													
-													<!-- Transaction Link (if available) -->
+													<!-- Transaction Status & Link -->
 													{#if winner.transaction_hash}
+														<!-- Show Solscan link -->
 														<a 
-															href="https://solscan.io/tx/{winner.transaction_hash}"
+															href={getSolscanTxUrl(winner.transaction_hash)}
 															target="_blank"
 															rel="noopener noreferrer"
-															class="text-green-600 hover:text-green-800 transition-colors"
-															title="View transaction"
+															class="p-2 hover:bg-gray-50 rounded-lg transition-all duration-200"
+															title="View transaction on Solscan - {formatTxHash(winner.transaction_hash)}"
 														>
-															<Icon icon="mdi:check-circle" class="w-4 h-4" />
+															<img 
+																src="/solscan.png" 
+																alt="Solscan"
+																class="w-4 h-4"
+															/>
 														</a>
+													{:else if winner.paid_at}
+														<!-- Marked as paid but no transaction hash -->
+														<div class="p-2 text-yellow-600" title="Payment processed but transaction not recorded">
+															<Icon icon="mdi:check" class="w-4 h-4" />
+														</div>
 													{:else}
-														<span class="text-gray-400" title="Transaction pending">
-															<Icon icon="mdi:clock" class="w-4 h-4" />
-														</span>
+														<!-- Pending payment -->
+														<div class="p-2 text-gray-400" title="Payment pending">
+															<Icon icon="mdi:clock-outline" class="w-4 h-4" />
+														</div>
 													{/if}
 												</div>
 											</td>

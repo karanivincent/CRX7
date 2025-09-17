@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import DistributionCard from '$lib/components/ui/distribution-card.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -127,19 +128,38 @@
 	}
 
 	async function executeDistribution() {
-		if (!calculatedDistribution || !distributionAmount) return;
+		if (!calculatedDistribution || !distributionAmount || !pendingWinners) return;
 		
 		executingDistribution = true;
 		error = '';
 		
 		try {
+			// Calculate actual amount per winner from the distribution dialog
+			const amountPerWinner = pendingWinners.count > 0 ? 
+				calculatedDistribution.winners.amount / pendingWinners.count : 0;
+			
+			// Create winner data with actual amounts being sent
+			const winnersData = (pendingWinners.pendingWinners || []).map(winner => ({
+				walletAddress: winner.walletAddress,
+				amount: amountPerWinner
+			}));
+			
+			console.log('🎯 Sending distribution with actual winner amounts:', {
+				totalDistribution: distributionAmount,
+				winnersTotal: calculatedDistribution.winners.amount,
+				amountPerWinner,
+				winnersCount: winnersData.length,
+				winnersData
+			});
+			
 			const response = await fetch('/api/admin-wallet/distribution', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					distributionAmount: distributionAmount
+					distributionAmount: distributionAmount,
+					winnersData: winnersData
 				})
 			});
 			
@@ -594,64 +614,37 @@
 				</CardHeader>
 				<CardContent>
 					{#if loadingHistory}
-						<div class="animate-pulse space-y-2">
-							<div class="h-4 bg-gray-200 rounded w-1/4"></div>
-							<div class="h-8 bg-gray-200 rounded"></div>
-							<div class="h-8 bg-gray-200 rounded"></div>
+						<!-- Loading State -->
+						<div class="animate-pulse space-y-4">
+							<div class="h-20 bg-gray-200 rounded-lg"></div>
+							<div class="h-20 bg-gray-200 rounded-lg"></div>
+							<div class="h-20 bg-gray-200 rounded-lg"></div>
 						</div>
 					{:else if distributionHistory && distributionHistory.history.length > 0}
-						<div class="space-y-3">
+						<!-- Distribution Cards -->
+						<div class="space-y-4">
 							{#each distributionHistory.history as record (record.id)}
-								<div class="p-3 bg-gray-50 rounded-lg border">
-									<div class="flex items-center justify-between mb-2">
-										<div class="flex items-center gap-2">
-											<div class="w-3 h-3 rounded-full {record.status === 'completed' ? 'bg-green-500' : record.status === 'failed' ? 'bg-red-500' : 'bg-yellow-500'}"></div>
-											<span class="font-medium text-gray-900">
-												{record.totalAmountFormatted}
-											</span>
-											<span class="text-sm text-gray-500 capitalize">
-												{record.status}
-											</span>
-										</div>
-										<span class="text-sm text-gray-500">
-											{record.executedAtFormatted}
-										</span>
-									</div>
-									<div class="grid grid-cols-3 gap-2 text-xs">
-										<div>
-											<span class="text-gray-500">Winners:</span>
-											<span class="font-medium">{record.winnersAmountFormatted}</span>
-										</div>
-										<div>
-											<span class="text-gray-500">Holding:</span>
-											<span class="font-medium">{record.holdingAmountFormatted}</span>
-										</div>
-										<div>
-											<span class="text-gray-500">Charity:</span>
-											<span class="font-medium">{record.charityAmountFormatted}</span>
-										</div>
-									</div>
-									{#if record.winnersTransactionHash}
-										<div class="mt-2 text-xs text-blue-600">
-											<div class="truncate">Winners TX: {record.winnersTransactionHash}</div>
-										</div>
-									{/if}
-								</div>
+								<DistributionCard {record} {Icon} />
 							{/each}
-							<Button size="sm" variant="outline" on:click={fetchDistributionHistory} class="w-full">
-								{#if Icon}
-									<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
-								{/if}
-								Refresh History
-							</Button>
+							
+							<!-- Refresh Button -->
+							<div class="pt-2">
+								<Button size="sm" variant="outline" on:click={fetchDistributionHistory} class="w-full">
+									{#if Icon}
+										<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
+									{/if}
+									Refresh History
+								</Button>
+							</div>
 						</div>
 					{:else}
-						<div class="text-center py-8 text-gray-500">
+						<!-- Empty State -->
+						<div class="text-center py-12 text-gray-500">
 							{#if Icon}
-								<Icon icon="mdi:clock-outline" class="w-12 h-12 mx-auto mb-2 text-gray-400" />
+								<Icon icon="mdi:clock-outline" class="w-16 h-16 mx-auto mb-4 text-gray-300" />
 							{/if}
-							<p class="font-medium">No distribution history</p>
-							<p class="text-sm">Distributions will appear here once executed</p>
+							<h3 class="font-medium text-gray-900 mb-2">No distribution history yet</h3>
+							<p class="text-sm text-gray-500">Distribution transactions will appear here once executed</p>
 						</div>
 					{/if}
 				</CardContent>
