@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { getServerVaultInfo } from '$lib/server/solana-server';
+import { getCombinedVaultInfo } from '$lib/server/solana-server';
 import { tokenConfig } from '$lib/config/token';
 
 export const load = async ({ locals }) => {
@@ -14,8 +14,8 @@ export const load = async ({ locals }) => {
 	let vaultError = null;
 	
 	try {
-		const vaultInfo = await getServerVaultInfo(tokenConfig.rewardVault, true);
-		vaultBalance = vaultInfo.balance;
+		const vaultInfo = await getCombinedVaultInfo(tokenConfig.creatorVault, tokenConfig.coinCreatorVaultAta, true);
+		vaultBalance = vaultInfo.combinedBalance;
 	} catch (error) {
 		console.error('Failed to fetch vault balance for draw page:', error);
 		vaultError = error instanceof Error ? error.message : 'Unknown error';

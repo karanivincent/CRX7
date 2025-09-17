@@ -291,6 +291,125 @@ export async function getServerVaultInfo(vaultAddress: string, useCache: boolean
 }
 
 /**
+ * Get combined vault information from multiple vault addresses
+ * Combines balances from creator vault and coin creator vault ATA
+ */
+export async function getCombinedVaultInfo(creatorVault: string, coinCreatorVaultAta: string, useCache: boolean = true) {
+	try {
+		console.log(`Fetching combined vault balance from:`);
+		console.log(`  Creator Vault: ${creatorVault}`);
+		console.log(`  Coin Creator Vault ATA: ${coinCreatorVaultAta}`);
+		
+		// Get balances from both vaults
+		const [creatorBalance, coinCreatorBalance] = await Promise.all([
+			getServerSOLBalance(creatorVault, useCache),
+			getServerSOLBalance(coinCreatorVaultAta, useCache)
+		]);
+		
+		// Calculate combined balance
+		const combinedBalance = creatorBalance + coinCreatorBalance;
+		const distribution = calculateDistribution(combinedBalance);
+		
+		// Calculate winner amounts (7 winners by default)
+		const winnersAmount = distribution.winners.amount;
+		const perWinnerAmount = winnersAmount / 7;
+		
+		return {
+			// Combined vault information
+			combinedBalance,
+			combinedBalanceFormatted: formatSOLAmount(combinedBalance),
+			
+			// Individual vault breakdowns
+			vaultBreakdown: {
+				creatorVault: {
+					address: creatorVault,
+					balance: creatorBalance,
+					balanceFormatted: formatSOLAmount(creatorBalance)
+				},
+				coinCreatorVaultAta: {
+					address: coinCreatorVaultAta,
+					balance: coinCreatorBalance,
+					balanceFormatted: formatSOLAmount(coinCreatorBalance)
+				}
+			},
+			
+			// Distribution calculations based on combined balance
+			distribution,
+			winnerBreakdown: {
+				total: winnersAmount,
+				perWinner: perWinnerAmount,
+				numberOfWinners: 7,
+				totalFormatted: formatSOLAmount(winnersAmount),
+				perWinnerFormatted: formatSOLAmount(perWinnerAmount, 3)
+			},
+			lastUpdated: new Date().toISOString(),
+			usingHelius: !!HELIUS_API_KEY,
+			cached: useCache // This will be more complex in practice, but good enough for now
+		};
+	} catch (error) {
+		console.error('Error getting combined vault info:', error);
+		throw error;
+	}
+}
+
+/**
+ * Get combined detailed balance from multiple vault addresses
+ * Includes SOL and WSOL breakdown for both vaults
+ */
+export async function getCombinedDetailedBalance(creatorVault: string, coinCreatorVaultAta: string, useCache: boolean = true) {
+	try {
+		// Get detailed balances from both vaults
+		const [creatorDetailedBalance, coinCreatorDetailedBalance] = await Promise.all([
+			getServerDetailedBalance(creatorVault, useCache),
+			getServerDetailedBalance(coinCreatorVaultAta, useCache)
+		]);
+		
+		// Calculate combined totals
+		const combinedSolBalance = creatorDetailedBalance.solBalance + coinCreatorDetailedBalance.solBalance;
+		const combinedWsolBalance = creatorDetailedBalance.wsolBalance + coinCreatorDetailedBalance.wsolBalance;
+		const combinedTotalBalance = combinedSolBalance + combinedWsolBalance;
+		
+		return {
+			// Combined totals
+			solBalance: combinedSolBalance,
+			wsolBalance: combinedWsolBalance,
+			totalBalance: combinedTotalBalance,
+			solFormatted: formatSOLAmount(combinedSolBalance),
+			wsolFormatted: formatSOLAmount(combinedWsolBalance),
+			totalFormatted: formatSOLAmount(combinedTotalBalance),
+			
+			// Individual vault breakdowns
+			vaultBreakdown: {
+				creatorVault: {
+					address: creatorVault,
+					solBalance: creatorDetailedBalance.solBalance,
+					wsolBalance: creatorDetailedBalance.wsolBalance,
+					totalBalance: creatorDetailedBalance.totalBalance,
+					solFormatted: creatorDetailedBalance.solFormatted,
+					wsolFormatted: creatorDetailedBalance.wsolFormatted,
+					totalFormatted: creatorDetailedBalance.totalFormatted
+				},
+				coinCreatorVaultAta: {
+					address: coinCreatorVaultAta,
+					solBalance: coinCreatorDetailedBalance.solBalance,
+					wsolBalance: coinCreatorDetailedBalance.wsolBalance,
+					totalBalance: coinCreatorDetailedBalance.totalBalance,
+					solFormatted: coinCreatorDetailedBalance.solFormatted,
+					wsolFormatted: coinCreatorDetailedBalance.wsolFormatted,
+					totalFormatted: coinCreatorDetailedBalance.totalFormatted
+				}
+			},
+			
+			cached: useCache,
+			timestamp: Date.now()
+		};
+	} catch (error) {
+		console.error('Error getting combined detailed balance:', error);
+		throw error;
+	}
+}
+
+/**
  * Health check for Solana connection
  */
 export async function checkServerSolanaConnection(): Promise<boolean> {

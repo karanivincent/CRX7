@@ -5,7 +5,8 @@ import {
 	ADMIN_WALLET_ADDRESS,
 	HOLDING_WALLET_ADDRESS,
 	CHARITY_WALLET_ADDRESS,
-	REWARD_VAULT_ADDRESS
+	CREATOR_VAULT,
+	COIN_CREATOR_VAULT_ATA
 } from '$env/static/private';
 
 export interface TokenConfig {
@@ -19,7 +20,8 @@ export interface TokenConfig {
 	adminWallet: string;
 	holdingWallet: string;
 	charityWallet: string;
-	rewardVault: string;
+	creatorVault: string;
+	coinCreatorVaultAta: string;
 	
 	// Distribution Settings
 	distribution: {
@@ -47,7 +49,8 @@ export const tokenConfig: TokenConfig = {
 	adminWallet: ADMIN_WALLET_ADDRESS,
 	holdingWallet: HOLDING_WALLET_ADDRESS,
 	charityWallet: CHARITY_WALLET_ADDRESS,
-	rewardVault: REWARD_VAULT_ADDRESS,
+	creatorVault: CREATOR_VAULT,
+	coinCreatorVaultAta: COIN_CREATOR_VAULT_ATA,
 	
 	// Distribution Settings
 	distribution: {

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { getServerVaultInfo, getServerDetailedBalance, checkServerSolanaConnection } from '$lib/server/solana-server';
+import { getCombinedVaultInfo, getCombinedDetailedBalance, checkServerSolanaConnection } from '$lib/server/solana-server';
 import { tokenConfig } from '$lib/config/token';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -9,7 +9,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		const forceRefresh = url.searchParams.get('refresh') === 'true';
 		const useCache = !forceRefresh;
 
-		console.log(`Fetching vault balance for: ${tokenConfig.rewardVault}`);
+		console.log(`Fetching combined vault balance from:`);
+		console.log(`  Creator Vault: ${tokenConfig.creatorVault}`);
+		console.log(`  Coin Creator Vault ATA: ${tokenConfig.coinCreatorVaultAta}`);
 		console.log(`Using cache: ${useCache}`);
 
 		// First check if Solana connection is healthy
@@ -25,17 +27,18 @@ export const GET: RequestHandler = async ({ url }) => {
 			);
 		}
 
-		// Get vault information and detailed balance breakdown
-		const vaultInfo = await getServerVaultInfo(tokenConfig.rewardVault, useCache);
-		const detailedBalance = await getServerDetailedBalance(tokenConfig.rewardVault, useCache);
+		// Get combined vault information and detailed balance breakdown
+		const vaultInfo = await getCombinedVaultInfo(tokenConfig.creatorVault, tokenConfig.coinCreatorVaultAta, useCache);
+		const detailedBalance = await getCombinedDetailedBalance(tokenConfig.creatorVault, tokenConfig.coinCreatorVaultAta, useCache);
 
 		// Return comprehensive vault data
 		return json({
 			success: true,
 			vault: {
-				address: vaultInfo.address,
-				balance: vaultInfo.balance,
-				balanceFormatted: vaultInfo.balanceFormatted,
+				// Use combined address info for backwards compatibility
+				address: `${tokenConfig.creatorVault} + ${tokenConfig.coinCreatorVaultAta}`,
+				balance: vaultInfo.combinedBalance,
+				balanceFormatted: vaultInfo.combinedBalanceFormatted,
 				lastUpdated: vaultInfo.lastUpdated,
 				cached: vaultInfo.cached,
 				breakdown: {
@@ -45,6 +48,11 @@ export const GET: RequestHandler = async ({ url }) => {
 					solFormatted: detailedBalance.solFormatted,
 					wsolFormatted: detailedBalance.wsolFormatted,
 					totalFormatted: detailedBalance.totalFormatted
+				},
+				// Add individual vault breakdown for transparency
+				vaultBreakdown: {
+					creatorVault: vaultInfo.vaultBreakdown.creatorVault,
+					coinCreatorVaultAta: vaultInfo.vaultBreakdown.coinCreatorVaultAta
 				}
 			},
 			distribution: {
@@ -71,7 +79,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				}
 			},
 			meta: {
-				rewardVaultAddress: tokenConfig.rewardVault,
+				creatorVaultAddress: tokenConfig.creatorVault,
+				coinCreatorVaultAtaAddress: tokenConfig.coinCreatorVaultAta,
 				holdingWalletAddress: tokenConfig.holdingWallet,
 				charityWalletAddress: tokenConfig.charityWallet,
 				adminWalletAddress: tokenConfig.adminWallet,
@@ -89,7 +98,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				error: 'Failed to fetch vault balance',
 				message: error instanceof Error ? error.message : 'Unknown error occurred',
 				vault: {
-					address: tokenConfig.rewardVault,
+					address: `${tokenConfig.creatorVault} + ${tokenConfig.coinCreatorVaultAta}`,
 					balance: 0,
 					balanceFormatted: '0.00 SOL',
 					lastUpdated: new Date().toISOString(),
@@ -104,19 +113,20 @@ export const GET: RequestHandler = async ({ url }) => {
 // Optional POST endpoint to manually refresh vault balance
 export const POST: RequestHandler = async () => {
 	try {
-		console.log('Manual vault balance refresh requested');
+		console.log('Manual combined vault balance refresh requested');
 		
 		// Force refresh by bypassing cache
-		const vaultInfo = await getServerVaultInfo(tokenConfig.rewardVault, false);
+		const vaultInfo = await getCombinedVaultInfo(tokenConfig.creatorVault, tokenConfig.coinCreatorVaultAta, false);
 		
 		return json({
 			success: true,
-			message: 'Vault balance refreshed successfully',
+			message: 'Combined vault balance refreshed successfully',
 			vault: {
-				address: vaultInfo.address,
-				balance: vaultInfo.balance,
-				balanceFormatted: vaultInfo.balanceFormatted,
-				lastUpdated: vaultInfo.lastUpdated
+				address: `${tokenConfig.creatorVault} + ${tokenConfig.coinCreatorVaultAta}`,
+				balance: vaultInfo.combinedBalance,
+				balanceFormatted: vaultInfo.combinedBalanceFormatted,
+				lastUpdated: vaultInfo.lastUpdated,
+				vaultBreakdown: vaultInfo.vaultBreakdown
 			}
 		});
 		

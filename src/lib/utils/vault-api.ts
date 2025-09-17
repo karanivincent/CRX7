@@ -17,6 +17,19 @@ export interface VaultInfo {
 		wsolFormatted: string;
 		totalFormatted: string;
 	};
+	// Optional vault breakdown for combined vaults
+	vaultBreakdown?: {
+		creatorVault: {
+			address: string;
+			balance: number;
+			balanceFormatted: string;
+		};
+		coinCreatorVaultAta: {
+			address: string;
+			balance: number;
+			balanceFormatted: string;
+		};
+	};
 }
 
 export interface VaultDistribution {
@@ -48,7 +61,10 @@ export interface VaultApiResponse {
 	vault: VaultInfo;
 	distribution: VaultDistribution;
 	meta: {
-		rewardVaultAddress: string;
+		creatorVaultAddress?: string;
+		coinCreatorVaultAtaAddress?: string;
+		// Keep for backwards compatibility
+		rewardVaultAddress?: string;
 		holdingWalletAddress: string;
 		charityWalletAddress: string;
 		adminWalletAddress: string;
