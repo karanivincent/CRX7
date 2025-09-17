@@ -55,6 +55,9 @@ export const distributionHistoryTable = pgTable("distribution_history", {
   winnersAmount: numeric("winners_amount", { precision: 20, scale: 9 }).notNull(),
   holdingAmount: numeric("holding_amount", { precision: 20, scale: 9 }).notNull(),
   charityAmount: numeric("charity_amount", { precision: 20, scale: 9 }).notNull(),
+  // Round reference
+  roundId: uuid("round_id").references(() => drawTable.id),
+  roundNumber: integer("round_number"), // Denormalized for easier querying
   // Transaction tracking
   winnersTransactionHash: text("winners_transaction_hash"),
   holdingTransactionHash: text("holding_transaction_hash"),

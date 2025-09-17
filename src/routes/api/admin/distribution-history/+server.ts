@@ -76,6 +76,9 @@ export const GET: RequestHandler = async ({ url }) => {
       // Calculate estimated winner count (assuming equal distribution)
       estimatedWinnerCount: record.winners_amount > 0 ? 
         Math.round(Number(record.winners_amount) / (Number(record.total_amount) * 0.5 / 7)) || 7 : 0,
+      // Round information
+      roundNumber: record.round_number,
+      roundId: record.round_id,
       // Add status info
       isCompleted: record.status === 'completed',
       isPending: record.status === 'pending',

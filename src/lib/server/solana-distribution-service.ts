@@ -53,10 +53,13 @@ export async function executeDistribution(
     const holdingAmount = totalAmount * (distributionConfig.holdingPercentage / 100);
     const charityAmount = totalAmount * (distributionConfig.charityPercentage / 100);
 
-    // Get pending winners from database
+    // Get pending winners from database with draw information
     const { data: pendingWinners, error: winnersError } = await supabase
       .from('winner')
-      .select('*')
+      .select(`
+        *,
+        draw!inner(id, draw_number)
+      `)
       .is('transaction_hash', null)
       .order('won_at');
 
@@ -93,12 +96,17 @@ export async function executeDistribution(
       console.log(`Using equal distribution: ${amountPerWinner} SOL per winner`);
     }
 
+    // Get round information from the first pending winner (all should be from same round)
+    const roundInfo = pendingWinners.length > 0 ? pendingWinners[0].draw : null;
+    
     // Create distribution history record
     const historyRecord = {
       total_amount: totalAmount.toString(),
       winners_amount: winnersAmount.toString(),
       holding_amount: holdingAmount.toString(),
       charity_amount: charityAmount.toString(),
+      round_id: roundInfo?.id || null,
+      round_number: roundInfo?.draw_number || null,
       executed_by: adminWalletAddress,
       status: 'pending',
       notes: canExecuteRealTransactions 

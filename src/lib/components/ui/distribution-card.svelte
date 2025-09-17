@@ -95,6 +95,10 @@
           
           <!-- Recipients Summary -->
           <div class="flex items-center gap-4 text-sm text-gray-600">
+            {#if record.roundNumber}
+              <span class="font-medium text-purple-600">Round #{record.roundNumber}</span>
+              <span>•</span>
+            {/if}
             <span>{record.estimatedWinnerCount || 7} winners</span>
             <span>•</span>
             <span>{formatDate(record.executed_at)}</span>
