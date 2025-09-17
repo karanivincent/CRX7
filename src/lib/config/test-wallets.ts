@@ -128,9 +128,29 @@ export function validateTestWallets(): { valid: boolean; errors: string[] } {
 
 // Get test mode status
 export function isTestMode(): boolean {
+  // Check if we're in a browser environment
+  if (typeof process === 'undefined') {
+    return false;
+  }
+  
   // Check environment variable first
-  if (typeof process !== 'undefined' && process.env?.USE_TEST_MODE !== undefined) {
+  if (process.env?.USE_TEST_MODE !== undefined) {
     return process.env.USE_TEST_MODE === 'true';
+  }
+  
+  // Try to load from configuration file
+  try {
+    const { readFileSync, existsSync } = require('fs');
+    const { join } = require('path');
+    const configPath = join(process.cwd(), '.testing-mode.json');
+    
+    if (existsSync(configPath)) {
+      const configData = readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(configData);
+      return config.testingMode || false;
+    }
+  } catch (error) {
+    // Ignore file reading errors, fall back to environment
   }
   
   // Default to development mode check
@@ -139,9 +159,29 @@ export function isTestMode(): boolean {
 
 // Check if we should use test wallets for distribution destinations
 export function useTestDistributionWallets(): boolean {
-  // Separate control for distribution wallets vs winner wallets
-  if (typeof process !== 'undefined' && process.env?.USE_TEST_DISTRIBUTION_WALLETS !== undefined) {
+  // Check if we're in a browser environment
+  if (typeof process === 'undefined') {
+    return false;
+  }
+  
+  // Check environment variable first
+  if (process.env?.USE_TEST_DISTRIBUTION_WALLETS !== undefined) {
     return process.env.USE_TEST_DISTRIBUTION_WALLETS === 'true';
+  }
+  
+  // Try to load from configuration file
+  try {
+    const { readFileSync, existsSync } = require('fs');
+    const { join } = require('path');
+    const configPath = join(process.cwd(), '.testing-mode.json');
+    
+    if (existsSync(configPath)) {
+      const configData = readFileSync(configPath, 'utf-8');
+      const config = JSON.parse(configData);
+      return config.useTestDistributionWallets || false;
+    }
+  } catch (error) {
+    // Ignore file reading errors, fall back to default
   }
   
   // Default: use real distribution wallets even in test mode

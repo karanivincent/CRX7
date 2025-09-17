@@ -30,9 +30,55 @@
 	let tokenName = '$runner';
 	let tokenSymbol = 'RUNNER';
 	
+	// Testing mode settings
+	let testingMode = false;
+	let useTestDistributionWallets = false;
+	
 	// Save status
 	let saving = false;
 	let lastSaved = '';
+	
+	// Load current testing mode status on component mount
+	import { onMount } from 'svelte';
+	
+	onMount(async () => {
+		try {
+			const response = await fetch('/api/admin/testing-mode');
+			if (response.ok) {
+				const result = await response.json();
+				testingMode = result.testingMode || false;
+				useTestDistributionWallets = result.useTestDistributionWallets || false;
+			}
+		} catch (error) {
+			console.error('Failed to load testing mode status:', error);
+		}
+	});
+	
+	async function toggleTestingMode() {
+		try {
+			const response = await fetch('/api/admin/testing-mode', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					testingMode,
+					useTestDistributionWallets
+				})
+			});
+			
+			if (response.ok) {
+				const result = await response.json();
+				console.log('Testing mode updated:', result);
+			} else {
+				throw new Error('Failed to update testing mode');
+			}
+		} catch (error) {
+			console.error('Failed to update testing mode:', error);
+			// Revert the toggle on error
+			testingMode = !testingMode;
+		}
+	}
 	
 	async function saveConfiguration() {
 		saving = true;
@@ -267,6 +313,118 @@
 					/>
 					<div class="text-xs text-gray-500">Read-only: Set in environment variables</div>
 				</div>
+			</CardContent>
+		</Card>
+		
+		<!-- Testing Mode Configuration -->
+		<Card class="border-2 border-yellow-200 lg:col-span-2">
+			<CardHeader>
+				<CardTitle class="flex items-center gap-2">
+					<Icon icon="mdi:flask" class="w-5 h-5 text-yellow-600" />
+					Testing Mode Configuration
+				</CardTitle>
+				<CardDescription>Enable testing features for development and debugging</CardDescription>
+			</CardHeader>
+			<CardContent class="space-y-6">
+				<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+					<!-- Testing Mode Toggle -->
+					<div class="space-y-4">
+						<div class="flex items-center justify-between">
+							<div class="space-y-1">
+								<label class="text-sm font-medium text-gray-700">Testing Mode</label>
+								<div class="text-xs text-gray-500">Enable test wallets for lottery participants</div>
+							</div>
+							<label class="relative inline-flex items-center cursor-pointer">
+								<input 
+									type="checkbox" 
+									bind:checked={testingMode}
+									on:change={toggleTestingMode}
+									class="sr-only peer"
+								/>
+								<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600"></div>
+							</label>
+						</div>
+						
+						{#if testingMode}
+							<div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+								<div class="flex items-start gap-2">
+									<Icon icon="mdi:information" class="w-4 h-4 text-yellow-600 mt-0.5" />
+									<div class="text-sm text-yellow-800">
+										<div class="font-medium">Testing Mode Active</div>
+										<div class="mt-1">Test wallets will be used as lottery participants instead of real token holders.</div>
+									</div>
+								</div>
+							</div>
+						{/if}
+					</div>
+					
+					<!-- Test Distribution Wallets Toggle -->
+					<div class="space-y-4">
+						<div class="flex items-center justify-between">
+							<div class="space-y-1">
+								<label class="text-sm font-medium text-gray-700">Test Distribution Wallets</label>
+								<div class="text-xs text-gray-500">Use test wallets for holding and charity destinations</div>
+							</div>
+							<label class="relative inline-flex items-center cursor-pointer">
+								<input 
+									type="checkbox" 
+									bind:checked={useTestDistributionWallets}
+									on:change={toggleTestingMode}
+									class="sr-only peer"
+								/>
+								<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-yellow-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-yellow-600"></div>
+							</label>
+						</div>
+						
+						{#if useTestDistributionWallets}
+							<div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+								<div class="flex items-start gap-2">
+									<Icon icon="mdi:shield-alert" class="w-4 h-4 text-yellow-600 mt-0.5" />
+									<div class="text-sm text-yellow-800">
+										<div class="font-medium">Test Distribution Active</div>
+										<div class="mt-1">SOL distributions will go to test wallets instead of production wallets.</div>
+									</div>
+								</div>
+							</div>
+						{/if}
+					</div>
+				</div>
+				
+				<!-- Current Test Wallets Display -->
+				{#if testingMode}
+					<div class="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+						<div class="flex items-center gap-2 mb-3">
+							<Icon icon="mdi:wallet-outline" class="w-4 h-4 text-gray-600" />
+							<span class="text-sm font-medium text-gray-700">Test Wallets Available</span>
+						</div>
+						<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+							<div class="text-xs">
+								<div class="font-medium text-gray-700">🤖 BonkBot</div>
+								<div class="font-mono text-gray-600">J23v...o3kB</div>
+							</div>
+							<div class="text-xs">
+								<div class="font-medium text-gray-700">🐂 Old Bull</div>
+								<div class="font-mono text-gray-600">HLMm...gexw</div>
+							</div>
+							<div class="text-xs">
+								<div class="font-medium text-gray-700">🦅 Neo December</div>
+								<div class="font-mono text-gray-600">3fQx...yoyL</div>
+							</div>
+							<div class="text-xs">
+								<div class="font-medium text-gray-700">🚀 Neo Current</div>
+								<div class="font-mono text-gray-600">HzNs...cMzj</div>
+							</div>
+							<div class="text-xs">
+								<div class="font-medium text-gray-700">🎯 Neo Seven</div>
+								<div class="font-mono text-gray-600">D3Bt...MbNF</div>
+							</div>
+							<div class="text-xs">
+								<div class="font-medium text-gray-700">🌟 Neo Five</div>
+								<div class="font-mono text-gray-600">DMHi...mjTC</div>
+							</div>
+						</div>
+					</div>
+				{/if}
 			</CardContent>
 		</Card>
 	</div>

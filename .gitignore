@@ -11,3 +11,6 @@ vite.config.ts.timestamp-*
 
 # Scripts with sensitive data
 scripts/consolidate-test-wallets.ts
+
+# Testing mode configuration
+.testing-mode.json
