@@ -102,8 +102,30 @@
 	}
 	
 	async function toggleDeveloperPanel() {
-		showDeveloperPanel = !showDeveloperPanel;
-		await toggleTestingMode(); // Save the state
+		try {
+			const response = await fetch('/api/admin/testing-mode', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					testingMode,
+					useTestDistributionWallets,
+					showDeveloperPanel
+				})
+			});
+			
+			if (response.ok) {
+				const result = await response.json();
+				console.log('Developer panel updated:', result);
+			} else {
+				throw new Error('Failed to update developer panel');
+			}
+		} catch (error) {
+			console.error('Failed to update developer panel:', error);
+			// Revert the toggle on error
+			showDeveloperPanel = !showDeveloperPanel;
+		}
 	}
 	
 	$: isValidConfig = validateWalletAddress(holdingWallet) && 

@@ -9,6 +9,9 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { TEST_WALLETS, createTestWinners, isTestMode, validateTestWallets } from '$lib/config/test-wallets';
 	
+	// Developer panel visibility
+	let showDeveloperPanel = false;
+	
 	// Import new store-based system
 	import { 
 		gameRound,
@@ -79,6 +82,17 @@
 	onMount(async () => {
 		await refreshVaultBalance();
 		// Removed automatic round recovery - user should start fresh
+		
+		// Load developer panel setting
+		try {
+			const response = await fetch('/api/admin/testing-mode');
+			if (response.ok) {
+				const result = await response.json();
+				showDeveloperPanel = result.showDeveloperPanel || false;
+			}
+		} catch (error) {
+			console.warn('Failed to load developer panel setting:', error);
+		}
 		
 		// Temporarily disable auto-progression to debug infinite loop
 		// unsubscribeAutoProgression = startAutoProgression();
@@ -565,6 +579,7 @@
 	{/if}
 	
 	<!-- Enhanced Testing Panel -->
+	{#if showDeveloperPanel}
 	<div class="fixed top-4 right-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg shadow-xl p-4 border-2 border-orange-200 max-w-sm">
 		<!-- Header -->
 		<div class="flex items-center justify-between mb-3">
@@ -685,4 +700,5 @@
 			</div>
 		</div>
 	</div>
+	{/if}
 </AdminLayout>
