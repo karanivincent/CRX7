@@ -21,10 +21,6 @@ TRUNCATE TABLE "winner" RESTART IDENTITY CASCADE;
 TRUNCATE TABLE "participant" RESTART IDENTITY CASCADE;
 TRUNCATE TABLE "draw" RESTART IDENTITY CASCADE;
 
--- Clear user profiles (remove test users)
--- ⚠️  UNCOMMENT ONLY if you want to remove all user accounts
--- TRUNCATE TABLE "profile" RESTART IDENTITY CASCADE;
-
 -- ===========================================
 -- STEP 2: Reset sequences and auto-increment values
 -- ===========================================
@@ -64,25 +60,23 @@ SELECT 'participant', COUNT(*) FROM "participant"
 UNION ALL
 SELECT 'winner', COUNT(*) FROM "winner"
 UNION ALL
-SELECT 'distribution_history', COUNT(*) FROM "distribution_history"
-UNION ALL
-SELECT 'profile', COUNT(*) FROM "profile";
+SELECT 'distribution_history', COUNT(*) FROM "distribution_history";
 
 -- ===========================================
 -- STEP 5: Insert production-ready initial data (optional)
 -- ===========================================
 
 -- You can uncomment and modify this section to insert any initial data
--- For example, create your admin user profile if needed
+-- For example, create your first scheduled draw if needed
 
 /*
--- Example: Insert admin profile
-INSERT INTO "profile" (id, first_name, last_name, email)
+-- Example: Insert first scheduled draw
+INSERT INTO "draw" (id, draw_number, scheduled_at, status)
 VALUES (
     gen_random_uuid(),
-    'Admin',
-    'User',
-    'admin@crx7.run'
+    1,
+    NOW() + INTERVAL '1 week',
+    'scheduled'
 );
 */
 

@@ -15,14 +15,14 @@ SELECT
     tableowner
 FROM pg_tables 
 WHERE schemaname = 'public' 
-AND tablename IN ('draw', 'participant', 'winner', 'distribution_history', 'profile')
+AND tablename IN ('draw', 'participant', 'winner', 'distribution_history')
 ORDER BY tablename;
 
 -- ===========================================
 -- VERIFY DATA CLEANUP
 -- ===========================================
 
--- Verify all tables are empty (except profile if you kept admin users)
+-- Verify all tables are empty
 SELECT 
     'draw' as table_name, 
     COUNT(*) as record_count,
@@ -34,8 +34,6 @@ UNION ALL
 SELECT 'winner', COUNT(*), CASE WHEN COUNT(*) = 0 THEN '✅ Clean' ELSE '❌ Has Data' END FROM "winner"
 UNION ALL
 SELECT 'distribution_history', COUNT(*), CASE WHEN COUNT(*) = 0 THEN '✅ Clean' ELSE '❌ Has Data' END FROM "distribution_history"
-UNION ALL
-SELECT 'profile', COUNT(*), CASE WHEN COUNT(*) <= 1 THEN '✅ Clean/Admin Only' ELSE '⚠️  Multiple Users' END FROM "profile"
 ORDER BY table_name;
 
 -- ===========================================
