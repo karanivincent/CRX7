@@ -268,6 +268,19 @@
 		}
 	}
 
+	function handleRetryInitiated(event) {
+		console.log('Retry initiated for distribution:', event.detail);
+		// Refresh the distribution history to show updated status
+		setTimeout(() => {
+			fetchDistributionHistory();
+		}, 1000);
+	}
+
+	function handleRetryError(event) {
+		console.error('Retry error:', event.detail.error);
+		alert(`Failed to retry distribution: ${event.detail.error}`);
+	}
+
 	onMount(() => {
 		fetchAdminBalance();
 		fetchPendingWinners();
@@ -624,7 +637,12 @@
 						<!-- Distribution Cards -->
 						<div class="space-y-4">
 							{#each distributionHistory.history as record (record.id)}
-								<DistributionCard {record} {Icon} />
+								<DistributionCard 
+									{record} 
+									{Icon} 
+									on:retryInitiated={handleRetryInitiated}
+									on:retryError={handleRetryError}
+								/>
 							{/each}
 							
 							<!-- Refresh Button -->

@@ -43,8 +43,14 @@ interface DistributionTransactionResult {
     holdingTransactionHash?: string;
     charityTransactionHash?: string;
   };
+  failures: {
+    winnersFailure?: string;
+    holdingFailure?: string;
+    charityFailure?: string;
+  };
   totalPriorityFees?: number;
   error?: string;
+  hasPartialSuccess?: boolean;
 }
 
 /**
@@ -270,80 +276,102 @@ export async function executeDistributionTransactions(
   console.log('🚀 Starting MEV-protected distribution execution');
   
   const transactions: DistributionTransactionResult['transactions'] = {};
+  const failures: DistributionTransactionResult['failures'] = {};
   let totalPriorityFees = 0;
+  let successCount = 0;
+  let totalTransactions = 0;
   
-  try {
-    // 1. Bundle all winner transfers into single atomic transaction
-    if (winnersData.length > 0) {
-      const winnerTransfers = winnersData.map(winner => ({
-        to: winner.walletAddress,
-        amount: winner.amount
-      }));
-      
-      const winnersResult = await sendBundledTransaction(
-        winnerTransfers, 
-        `Winners Distribution (${winnersData.length} recipients)`
-      );
-      
-      if (!winnersResult.success) {
-        throw new Error(`Winners transaction failed: ${winnersResult.error}`);
-      }
-      
+  // 1. Bundle all winner transfers into single atomic transaction
+  if (winnersData.length > 0) {
+    totalTransactions++;
+    const winnerTransfers = winnersData.map(winner => ({
+      to: winner.walletAddress,
+      amount: winner.amount
+    }));
+    
+    const winnersResult = await sendBundledTransaction(
+      winnerTransfers, 
+      `Winners Distribution (${winnersData.length} recipients)`
+    );
+    
+    if (winnersResult.success) {
       transactions.winnersTransactionHash = winnersResult.signature;
       totalPriorityFees += winnersResult.priorityFee || 0;
+      successCount++;
+      console.log('✅ Winners transaction completed successfully');
+    } else {
+      failures.winnersFailure = winnersResult.error || 'Unknown error';
+      console.error('❌ Winners transaction failed:', winnersResult.error);
     }
+  }
 
-    // 2. Send to holding wallet (single transfer)
-    if (holdingAmount > 0 && holdingWalletAddress) {
-      const holdingResult = await sendBundledTransaction(
-        [{ to: holdingWalletAddress, amount: holdingAmount }],
-        'Holding Wallet Transfer'
-      );
-      
-      if (!holdingResult.success) {
-        throw new Error(`Holding transaction failed: ${holdingResult.error}`);
-      }
-      
+  // 2. Send to holding wallet (single transfer) - Continue even if winners failed
+  if (holdingAmount > 0 && holdingWalletAddress) {
+    totalTransactions++;
+    const holdingResult = await sendBundledTransaction(
+      [{ to: holdingWalletAddress, amount: holdingAmount }],
+      'Holding Wallet Transfer'
+    );
+    
+    if (holdingResult.success) {
       transactions.holdingTransactionHash = holdingResult.signature;
       totalPriorityFees += holdingResult.priorityFee || 0;
+      successCount++;
+      console.log('✅ Holding wallet transaction completed successfully');
+    } else {
+      failures.holdingFailure = holdingResult.error || 'Unknown error';
+      console.error('❌ Holding wallet transaction failed:', holdingResult.error);
     }
+  }
 
-    // 3. Send to charity wallet (single transfer)  
-    if (charityAmount > 0 && charityWalletAddress) {
-      const charityResult = await sendBundledTransaction(
-        [{ to: charityWalletAddress, amount: charityAmount }],
-        'Charity Wallet Transfer'
-      );
-      
-      if (!charityResult.success) {
-        throw new Error(`Charity transaction failed: ${charityResult.error}`);
-      }
-      
+  // 3. Send to charity wallet (single transfer) - Continue even if previous failed  
+  if (charityAmount > 0 && charityWalletAddress) {
+    totalTransactions++;
+    const charityResult = await sendBundledTransaction(
+      [{ to: charityWalletAddress, amount: charityAmount }],
+      'Charity Wallet Transfer'
+    );
+    
+    if (charityResult.success) {
       transactions.charityTransactionHash = charityResult.signature;
       totalPriorityFees += charityResult.priorityFee || 0;
+      successCount++;
+      console.log('✅ Charity wallet transaction completed successfully');
+    } else {
+      failures.charityFailure = charityResult.error || 'Unknown error';
+      console.error('❌ Charity wallet transaction failed:', charityResult.error);
     }
+  }
 
-    console.log('🎉 Distribution completed successfully!', {
+  const hasPartialSuccess = successCount > 0 && successCount < totalTransactions;
+  const allSuccess = successCount === totalTransactions;
+  const noSuccess = successCount === 0;
+
+  if (allSuccess) {
+    console.log('🎉 All distribution transactions completed successfully!', {
       transactions,
       totalPriorityFees: `${totalPriorityFees} micro-lamports`
     });
-
-    return {
-      success: true,
+  } else if (hasPartialSuccess) {
+    console.log('⚠️ Distribution partially completed', {
+      successCount,
+      totalTransactions,
       transactions,
-      totalPriorityFees
-    };
-
-  } catch (error) {
-    console.error('💥 Distribution execution failed:', error);
-    
-    return {
-      success: false,
-      transactions,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      totalPriorityFees
-    };
+      failures,
+      totalPriorityFees: `${totalPriorityFees} micro-lamports`
+    });
+  } else {
+    console.error('💥 All distribution transactions failed', { failures });
   }
+
+  return {
+    success: allSuccess,
+    transactions,
+    failures,
+    totalPriorityFees,
+    hasPartialSuccess,
+    error: noSuccess ? 'All transactions failed' : hasPartialSuccess ? 'Some transactions failed' : undefined
+  };
 }
 
 /**

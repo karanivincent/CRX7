@@ -62,10 +62,15 @@ export const distributionHistoryTable = pgTable("distribution_history", {
   winnersTransactionHash: text("winners_transaction_hash"),
   holdingTransactionHash: text("holding_transaction_hash"),
   charityTransactionHash: text("charity_transaction_hash"),
+  // Enhanced failure tracking
+  failureReason: text("failure_reason"),
+  failedTransactions: text("failed_transactions"), // JSON array of failed transaction types
+  retryCount: integer("retry_count").default(0),
+  lastRetryAt: timestamp("last_retry_at"),
   // Metadata
   executedBy: text("executed_by").notNull(), // admin wallet address
   executedAt: timestamp("executed_at").defaultNow().notNull(),
-  status: text("status").notNull().default("pending"), // 'pending', 'completed', 'failed'
+  status: text("status").notNull().default("pending"), // 'pending', 'completed', 'failed', 'partial_success', 'retrying'
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

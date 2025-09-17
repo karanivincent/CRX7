@@ -136,7 +136,11 @@ export async function executeDistribution(
     }
 
     let transactions;
+    let failures = {};
     let isSimulation = false;
+    let finalStatus = 'completed';
+    let failureReason = '';
+    let failedTransactionsList: string[] = [];
     
     if (canExecuteRealTransactions) {
       // Execute real Solana transactions
@@ -155,11 +159,33 @@ export async function executeDistribution(
         charityAmount
       );
       
-      if (!result.success) {
-        throw new Error(`Real transaction execution failed: ${result.error}`);
-      }
-      
       transactions = result.transactions;
+      failures = result.failures || {};
+      
+      // Determine final status based on transaction results
+      if (result.success) {
+        finalStatus = 'completed';
+        console.log('✅ Real Solana transactions completed successfully');
+      } else if (result.hasPartialSuccess) {
+        finalStatus = 'partial_success';
+        failureReason = result.error || 'Some transactions failed';
+        
+        // Build list of failed transactions
+        if (failures.winnersFailure) failedTransactionsList.push('winners');
+        if (failures.holdingFailure) failedTransactionsList.push('holding');
+        if (failures.charityFailure) failedTransactionsList.push('charity');
+        
+        console.log('⚠️ Partial distribution success - some transactions failed');
+      } else {
+        // All transactions failed, but don't throw error - we'll update the record as failed
+        finalStatus = 'failed';
+        failureReason = result.error || 'All transactions failed';
+        failedTransactionsList = ['winners', 'holding', 'charity'].filter(type => {
+          const failureKey = `${type}Failure` as keyof typeof failures;
+          return failures[failureKey];
+        });
+        console.error('❌ All distribution transactions failed');
+      }
       
       // Log transaction costs
       if (result.totalPriorityFees) {
@@ -181,30 +207,34 @@ export async function executeDistribution(
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
 
-    // Update winners with transaction hashes and actual distributed amounts
-    for (const winner of pendingWinners) {
-      const actualAmount = winnerAmountMap.get(winner.wallet_address) || amountPerWinner;
-      const { error: updateError } = await supabase
-        .from('winner')
-        .update({
-          transaction_hash: transactions.winnersTransactionHash,
-          paid_at: new Date().toISOString(),
-          prize_amount: actualAmount.toFixed(9) // Update with actual distributed amount
-        })
-        .eq('id', winner.id);
+    // Update winners with transaction hashes and actual distributed amounts (only if winners transaction succeeded)
+    if (transactions.winnersTransactionHash && finalStatus !== 'failed') {
+      for (const winner of pendingWinners) {
+        const actualAmount = winnerAmountMap.get(winner.wallet_address) || amountPerWinner;
+        const { error: updateError } = await supabase
+          .from('winner')
+          .update({
+            transaction_hash: transactions.winnersTransactionHash,
+            paid_at: new Date().toISOString(),
+            prize_amount: actualAmount.toFixed(9) // Update with actual distributed amount
+          })
+          .eq('id', winner.id);
 
-      if (updateError) {
-        throw updateError;
+        if (updateError) {
+          throw updateError;
+        }
       }
     }
 
     // Update distribution history with results
     const historyUpdate = {
-      status: 'completed',
+      status: finalStatus,
       winners_transaction_hash: transactions.winnersTransactionHash,
       holding_transaction_hash: transactions.holdingTransactionHash,
       charity_transaction_hash: transactions.charityTransactionHash,
-      notes: `${isSimulation ? 'Simulation' : 'Real'} transactions completed - Winners: ${pendingWinners.length}, Amount per winner: ${amountPerWinner} SOL`
+      failure_reason: failureReason || null,
+      failed_transactions: failedTransactionsList.length > 0 ? JSON.stringify(failedTransactionsList) : null,
+      notes: `${isSimulation ? 'Simulation' : 'Real'} transactions ${finalStatus} - Winners: ${pendingWinners.length}, Amount per winner: ${amountPerWinner} SOL${failureReason ? ` - ${failureReason}` : ''}`
     };
     
     if (historyId) {

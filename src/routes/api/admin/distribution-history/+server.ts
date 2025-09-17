@@ -79,10 +79,18 @@ export const GET: RequestHandler = async ({ url }) => {
       // Round information
       roundNumber: record.round_number,
       roundId: record.round_id,
+      // Failure tracking
+      failureReason: record.failure_reason,
+      failedTransactions: record.failed_transactions ? JSON.parse(record.failed_transactions) : [],
+      retryCount: record.retry_count || 0,
+      lastRetryAt: record.last_retry_at,
+      canRetry: (record.status === 'failed' || record.status === 'partial_success') && (record.retry_count || 0) < 3,
       // Add status info
       isCompleted: record.status === 'completed',
       isPending: record.status === 'pending',
       isFailed: record.status === 'failed',
+      isPartialSuccess: record.status === 'partial_success',
+      isRetrying: record.status === 'retrying',
       // Add transaction status summary
       hasAllTransactions: !!(record.winners_transaction_hash && record.holding_transaction_hash && record.charity_transaction_hash),
       transactionCount: [record.winners_transaction_hash, record.holding_transaction_hash, record.charity_transaction_hash].filter(Boolean).length
@@ -134,6 +142,81 @@ export const POST: RequestHandler = async ({ request }) => {
     console.error('Error creating distribution history record:', error);
     return json({
       error: 'Failed to create distribution history record',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+};
+
+// PATCH endpoint to retry failed transactions
+export const PATCH: RequestHandler = async ({ request, url }) => {
+  try {
+    const distributionId = url.searchParams.get('id');
+    if (!distributionId) {
+      return json({ error: 'Distribution ID is required' }, { status: 400 });
+    }
+
+    // Get the distribution record to retry
+    const { data: distribution, error: fetchError } = await supabase
+      .from('distribution_history')
+      .select('*')
+      .eq('id', distributionId)
+      .single();
+
+    if (fetchError || !distribution) {
+      return json({ error: 'Distribution not found' }, { status: 404 });
+    }
+
+    if (distribution.status === 'completed') {
+      return json({ error: 'Distribution already completed' }, { status: 400 });
+    }
+
+    // Parse failed transactions list
+    const failedTransactions = distribution.failed_transactions 
+      ? JSON.parse(distribution.failed_transactions) 
+      : [];
+
+    if (failedTransactions.length === 0) {
+      return json({ error: 'No failed transactions to retry' }, { status: 400 });
+    }
+
+    // Update retry count and status
+    const retryCount = (distribution.retry_count || 0) + 1;
+    if (retryCount > 3) {
+      return json({ error: 'Maximum retry attempts exceeded (3)' }, { status: 400 });
+    }
+
+    // Set status to retrying
+    const { error: updateError } = await supabase
+      .from('distribution_history')
+      .update({
+        status: 'retrying',
+        retry_count: retryCount,
+        last_retry_at: new Date().toISOString()
+      })
+      .eq('id', distributionId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Import the retry execution function
+    const { retryFailedDistribution } = await import('$lib/server/solana-retry-service');
+    
+    // Execute retry asynchronously (don't wait for completion)
+    retryFailedDistribution(distributionId, failedTransactions).catch(error => {
+      console.error(`Failed to retry distribution ${distributionId}:`, error);
+    });
+
+    return json({
+      success: true,
+      message: 'Retry initiated',
+      retryCount
+    });
+
+  } catch (error) {
+    console.error('Error retrying distribution:', error);
+    return json({
+      error: 'Failed to retry distribution',
       details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }

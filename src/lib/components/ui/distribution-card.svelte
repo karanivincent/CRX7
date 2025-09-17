@@ -29,6 +29,22 @@
           borderColor: 'border-yellow-200',
           label: 'Processing'
         };
+      case 'retrying':
+        return {
+          icon: 'mdi:refresh',
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          label: 'Retrying'
+        };
+      case 'partial_success':
+        return {
+          icon: 'mdi:alert',
+          color: 'text-orange-600',
+          bgColor: 'bg-orange-50',
+          borderColor: 'border-orange-200',
+          label: 'Partial Success'
+        };
       case 'failed':
         return {
           icon: 'mdi:alert-circle',
@@ -66,9 +82,31 @@
   function openSolscan(url: string) {
     window.open(url, '_blank', 'noopener,noreferrer');
   }
+
+  async function retryDistribution() {
+    try {
+      dispatch('retryStarted');
+      
+      const response = await fetch(`/api/admin/distribution-history?id=${record.id}`, {
+        method: 'PATCH'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        dispatch('retryInitiated', { id: record.id, retryCount: result.retryCount });
+      } else {
+        throw new Error(result.error || 'Retry failed');
+      }
+    } catch (error) {
+      console.error('Failed to retry distribution:', error);
+      dispatch('retryError', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  }
   
   $: statusInfo = getStatusInfo(record.status);
   $: hasTransactions = record.winners_transaction_hash || record.holding_transaction_hash || record.charity_transaction_hash;
+  $: hasFailures = record.failedTransactions && record.failedTransactions.length > 0;
 </script>
 
 <div class="border rounded-lg {statusInfo.borderColor} {statusInfo.bgColor} overflow-hidden">
@@ -106,12 +144,38 @@
               <span>•</span>
               <span class="text-amber-600">Partial transactions</span>
             {/if}
+            {#if record.retryCount > 0}
+              <span>•</span>
+              <span class="text-blue-600">Retry #{record.retryCount}</span>
+            {/if}
           </div>
+          
+          <!-- Failure Information -->
+          {#if hasFailures}
+            <div class="mt-2 text-sm">
+              <div class="text-red-600 font-medium">Failed: {record.failedTransactions.join(', ')}</div>
+              {#if record.failureReason}
+                <div class="text-red-500 text-xs mt-1">{record.failureReason}</div>
+              {/if}
+            </div>
+          {/if}
         </div>
       </div>
       
       <!-- Right: Actions -->
       <div class="flex items-center gap-2">
+        {#if record.canRetry}
+          <button
+            on:click={retryDistribution}
+            class="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50 transition-colors"
+            title="Retry failed transactions"
+          >
+            {#if Icon}
+              <Icon icon="mdi:refresh" class="w-3 h-3 inline mr-1" />
+            {/if}
+            Retry
+          </button>
+        {/if}
         {#if hasTransactions}
           <button
             on:click={() => expanded = !expanded}
