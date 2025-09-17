@@ -4,7 +4,10 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Collapsible, CollapsibleTrigger } from '$lib/components/ui/collapsible';
+	import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/components/ui/dialog';
 	import { getTokenDisplay, getDistributionConfig } from '$lib/config/client';
+	import { getWalletAddresses, truncateWalletAddress } from '$lib/config/wallets';
 	import AdminSidebar from '$lib/components/admin/admin-sidebar.svelte';
 	import { browser } from '$app/environment';
 	import { isTestMode } from '$lib/config/test-wallets';
@@ -18,6 +21,7 @@
 
 	const tokenDisplay = getTokenDisplay();
 	const distributionConfig = getDistributionConfig();
+	const walletAddresses = getWalletAddresses();
 
 	// Balance and distribution state
 	let balanceData: any = null;
@@ -29,10 +33,26 @@
 	// Pending winners state
 	let pendingWinners: any = null;
 	let loadingWinners = false;
+	let pendingWinnersOpen = false;
 	
 	// Distribution history state
 	let distributionHistory: any = null;
 	let loadingHistory = false;
+	
+	// Distribution dialog state
+	let showDistributionDialog = false;
+	let executingDistribution = false;
+	
+	// Copy to clipboard function
+	async function copyToClipboard(text: string) {
+		try {
+			await navigator.clipboard.writeText(text);
+			// Could add a toast notification here
+			console.log('Copied to clipboard:', text);
+		} catch (err) {
+			console.error('Failed to copy to clipboard:', err);
+		}
+	}
 
 	// Calculate distribution preview when amount changes
 	$: if (distributionAmount && !isNaN(Number(distributionAmount))) {
@@ -109,11 +129,7 @@
 	async function executeDistribution() {
 		if (!calculatedDistribution || !distributionAmount) return;
 		
-		const confirmed = confirm(`Execute distribution of ${distributionAmount} SOL?\n\nWinners: ${calculatedDistribution.winners.amount.toFixed(3)} SOL (${calculatedDistribution.winners.percentage}%)\nHolding: ${calculatedDistribution.holding.amount.toFixed(3)} SOL (${calculatedDistribution.holding.percentage}%)\nCharity: ${calculatedDistribution.charity.amount.toFixed(3)} SOL (${calculatedDistribution.charity.percentage}%)`);
-		
-		if (!confirmed) return;
-		
-		loading = true;
+		executingDistribution = true;
 		error = '';
 		
 		try {
@@ -135,6 +151,11 @@
 				await fetchAdminBalance();
 				await fetchPendingWinners();
 				await fetchDistributionHistory();
+				
+				// Close dialog and reset form
+				showDistributionDialog = false;
+				distributionAmount = '';
+				calculatedDistribution = null;
 			} else {
 				error = data.error || 'Failed to execute distribution';
 			}
@@ -142,7 +163,7 @@
 			error = 'Network error executing distribution';
 			console.error(err);
 		} finally {
-			loading = false;
+			executingDistribution = false;
 		}
 	}
 
@@ -424,8 +445,8 @@
 					<!-- Execute Distribution Button -->
 					<div class="flex gap-4">
 						<Button 
-							on:click={executeDistribution} 
-							disabled={!calculatedDistribution || loading}
+							on:click={() => showDistributionDialog = true} 
+							disabled={!calculatedDistribution || loading || executingDistribution}
 							class="bg-orange-600 hover:bg-orange-700"
 						>
 							{#if Icon}
@@ -456,52 +477,98 @@
 							<div class="h-8 bg-gray-200 rounded"></div>
 						</div>
 					{:else if pendingWinners && pendingWinners.count > 0}
-						<div class="space-y-4">
-							<!-- Summary -->
-							<div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
-								<div class="flex items-center justify-between">
-									<div>
-										<p class="font-medium text-gray-900">{pendingWinners.count} winners pending payment</p>
-										<p class="text-sm text-gray-600">Total amount: {pendingWinners.totalPendingFormatted}</p>
-									</div>
-									<div class="flex gap-2">
-										<Button size="sm" variant="outline" on:click={fetchPendingWinners} disabled={loadingWinners}>
-											{#if Icon}
-												<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
-											{/if}
-											Refresh
-										</Button>
-										<Button size="sm" variant="destructive" on:click={clearPendingWinners} disabled={loadingWinners}>
-											{#if Icon}
-												<Icon icon="mdi:delete-sweep" class="w-4 h-4 mr-2" />
-											{/if}
-											Clear All
-										</Button>
+						<Collapsible bind:open={pendingWinnersOpen}>
+							<div slot="trigger" let:toggleOpen let:open>
+								<div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+									<div class="flex items-center justify-between">
+										<CollapsibleTrigger 
+											onClick={toggleOpen} 
+											{open} 
+											disabled={loadingWinners}
+											class="flex items-center gap-2 flex-1 text-left"
+										>
+											<div>
+												<p class="font-medium text-gray-900">{pendingWinners.count} winners pending payment</p>
+												<p class="text-sm text-gray-600">Total amount: {pendingWinners.totalPendingFormatted}</p>
+											</div>
+										</CollapsibleTrigger>
+										<div class="flex gap-2 ml-4">
+											<Button size="sm" variant="outline" on:click={fetchPendingWinners} disabled={loadingWinners}>
+												{#if Icon}
+													<Icon icon="mdi:refresh" class="w-4 h-4 mr-2" />
+												{/if}
+												Refresh
+											</Button>
+											<Button size="sm" variant="destructive" on:click={clearPendingWinners} disabled={loadingWinners}>
+												{#if Icon}
+													<Icon icon="mdi:delete-sweep" class="w-4 h-4 mr-2" />
+												{/if}
+												Clear All
+											</Button>
+										</div>
 									</div>
 								</div>
 							</div>
-
-							<!-- Winners List -->
-							<div class="space-y-3 max-h-64 overflow-y-auto">
-								{#each pendingWinners.pendingWinners as winner (winner.id)}
-									<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
-										<div class="flex items-center gap-3">
-											<div class="text-2xl">{winner.animalEmoji}</div>
-											<div>
-												<p class="font-medium text-gray-900">{winner.animalName}</p>
-												<p class="text-sm text-gray-500">
-													{winner.walletAddress.slice(0, 8)}...{winner.walletAddress.slice(-8)}
-												</p>
+							
+							<div slot="content">
+								<div class="mt-4 space-y-4">
+									{#if pendingWinners.drawGroups && pendingWinners.drawGroups.length > 0}
+										{#each pendingWinners.drawGroups as drawGroup (drawGroup.drawId)}
+											<div class="border rounded-lg overflow-hidden">
+												<div class="bg-gray-50 px-4 py-2 border-b">
+													<h4 class="font-medium text-gray-900">
+														Draw #{drawGroup.drawNumber}
+														<span class="text-sm text-gray-600 ml-2">
+															({drawGroup.count} winners, {drawGroup.totalAmountFormatted})
+														</span>
+													</h4>
+												</div>
+												<div class="divide-y divide-gray-200">
+													{#each drawGroup.winners as winner (winner.id)}
+														<div class="flex items-center justify-between p-3">
+															<div class="flex items-center gap-3">
+																<div class="text-xl">{winner.animalEmoji}</div>
+																<div>
+																	<p class="font-medium text-gray-900">{winner.animalName}</p>
+																	<p class="text-sm text-gray-500">
+																		{winner.walletAddress.slice(0, 8)}...{winner.walletAddress.slice(-8)}
+																	</p>
+																</div>
+															</div>
+															<div class="text-right">
+																<p class="font-bold text-green-600">{Number(winner.prizeAmount).toFixed(3)} SOL</p>
+																<p class="text-xs text-gray-500">Position #{winner.sequenceNumber}</p>
+															</div>
+														</div>
+													{/each}
+												</div>
 											</div>
+										{/each}
+									{:else}
+										<!-- Fallback to old format if drawGroups not available -->
+										<div class="space-y-3">
+											{#each pendingWinners.pendingWinners as winner (winner.id)}
+												<div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border">
+													<div class="flex items-center gap-3">
+														<div class="text-2xl">{winner.animalEmoji}</div>
+														<div>
+															<p class="font-medium text-gray-900">{winner.animalName}</p>
+															<p class="text-sm text-gray-500">
+																{winner.walletAddress.slice(0, 8)}...{winner.walletAddress.slice(-8)}
+															</p>
+														</div>
+													</div>
+													<div class="text-right">
+														<p class="font-bold text-green-600">{Number(winner.prizeAmount).toFixed(3)} SOL</p>
+														<p class="text-xs text-gray-500">Draw #{winner.drawNumber}</p>
+													</div>
+												</div>
+											{/each}
 										</div>
-										<div class="text-right">
-											<p class="font-bold text-green-600">{Number(winner.prizeAmount).toFixed(3)} SOL</p>
-											<p class="text-xs text-gray-500">Draw #{winner.drawNumber}</p>
-										</div>
-									</div>
-								{/each}
+									{/if}
+								</div>
 							</div>
-						</div>
+						</Collapsible>
 					{:else}
 						<div class="text-center py-8 text-gray-500">
 							{#if Icon}
@@ -606,3 +673,299 @@
 		</div>
 	</main>
 </div>
+
+<!-- Distribution Execution Dialog -->
+<Dialog bind:open={showDistributionDialog} class="wide-dialog">
+	<DialogContent class="max-h-[90vh] overflow-y-auto">
+		<DialogHeader>
+			<DialogTitle class="flex items-center gap-2">
+				{#if Icon}
+					<Icon icon="mdi:send" class="w-5 h-5 text-orange-600" />
+				{/if}
+				Execute Distribution
+			</DialogTitle>
+			<DialogDescription>
+				Review the distribution details below and confirm to proceed with the transaction.
+			</DialogDescription>
+		</DialogHeader>
+
+		{#if calculatedDistribution}
+			<div class="space-y-6 py-4">
+				<!-- Top Row: Summary and Allocation -->
+				<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+					<!-- Distribution Summary -->
+					<div class="bg-orange-50 rounded-lg p-4 border border-orange-200">
+						<h3 class="font-semibold text-gray-900 mb-3">Distribution Summary</h3>
+						<div class="grid grid-cols-2 gap-4">
+							<div>
+								<p class="text-sm text-gray-600">Total Amount</p>
+								<p class="text-lg font-bold text-gray-900">{calculatedDistribution.total.toFixed(3)} SOL</p>
+							</div>
+							<div>
+								<p class="text-sm text-gray-600">Fee Reserve</p>
+								<p class="text-sm font-medium text-gray-700">0.1 SOL (maintained)</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Allocation Breakdown -->
+					<div class="space-y-3">
+						<h3 class="font-semibold text-gray-900">Allocation Breakdown</h3>
+						
+						<!-- Winners Allocation -->
+						<div class="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200">
+							<div class="flex items-center gap-2">
+								{#if Icon}
+									<Icon icon="mdi:trophy" class="w-4 h-4 text-green-600" />
+								{/if}
+								<div>
+									<p class="font-medium text-gray-900 text-sm">Winners ({calculatedDistribution.winners.percentage}%)</p>
+									{#if pendingWinners?.count}
+										<p class="text-xs text-gray-600">{pendingWinners.count} recipients</p>
+									{/if}
+								</div>
+							</div>
+							<div class="text-right">
+								<p class="font-bold text-green-600 text-sm">{calculatedDistribution.winners.amount.toFixed(3)} SOL</p>
+								{#if pendingWinners?.count}
+									<p class="text-xs text-gray-500">≈{(calculatedDistribution.winners.amount / pendingWinners.count).toFixed(3)} each</p>
+								{/if}
+							</div>
+						</div>
+
+						<!-- Holding Allocation -->
+						<div class="flex items-center justify-between p-2 bg-blue-50 rounded-lg border border-blue-200">
+							<div class="flex items-center gap-2">
+								{#if Icon}
+									<Icon icon="mdi:bank" class="w-4 h-4 text-blue-600" />
+								{/if}
+								<div>
+									<p class="font-medium text-gray-900 text-sm">Holding ({calculatedDistribution.holding.percentage}%)</p>
+									<p class="text-xs text-gray-600">Future rounds</p>
+								</div>
+							</div>
+							<p class="font-bold text-blue-600 text-sm">{calculatedDistribution.holding.amount.toFixed(3)} SOL</p>
+						</div>
+
+						<!-- Charity Allocation -->
+						<div class="flex items-center justify-between p-2 bg-purple-50 rounded-lg border border-purple-200">
+							<div class="flex items-center gap-2">
+								{#if Icon}
+									<Icon icon="mdi:heart" class="w-4 h-4 text-purple-600" />
+								{/if}
+								<div>
+									<p class="font-medium text-gray-900 text-sm">Charity ({calculatedDistribution.charity.percentage}%)</p>
+									<p class="text-xs text-gray-600">Contributions</p>
+								</div>
+							</div>
+							<p class="font-bold text-purple-600 text-sm">{calculatedDistribution.charity.amount.toFixed(3)} SOL</p>
+						</div>
+					</div>
+				</div>
+
+				<!-- Payment Destinations - Main Section -->
+				<div class="space-y-4">
+					<h3 class="font-semibold text-gray-900">Payment Destinations</h3>
+					
+					<!-- Two Column Layout -->
+					<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+						<!-- Left Column: Winners -->
+						<div class="space-y-4">
+							<!-- Winners Payments -->
+							{#if pendingWinners?.drawGroups && pendingWinners.drawGroups.length > 0}
+								<div class="border rounded-lg overflow-hidden">
+									<div class="bg-green-50 px-4 py-2 border-b border-green-200">
+										<div class="flex items-center gap-2">
+											{#if Icon}
+												<Icon icon="mdi:trophy" class="w-4 h-4 text-green-600" />
+											{/if}
+											<h4 class="font-medium text-green-900 text-sm">
+												Winners ({pendingWinners.count} recipients)
+											</h4>
+											<span class="text-xs text-green-700">
+												{calculatedDistribution.winners.amount.toFixed(3)} SOL total
+											</span>
+										</div>
+									</div>
+									<div>
+										{#each pendingWinners.drawGroups as drawGroup (drawGroup.drawId)}
+											{#each drawGroup.winners as winner (winner.id)}
+												<div class="flex items-center justify-between p-2 border-b border-gray-100 last:border-b-0">
+													<div class="flex items-center gap-2">
+														<div class="text-sm">{winner.animalEmoji}</div>
+														<div>
+															<p class="font-medium text-gray-900 text-sm">{winner.animalName}</p>
+															<button 
+																class="text-xs text-gray-500 hover:text-gray-700 font-mono cursor-pointer"
+																on:click={() => copyToClipboard(winner.walletAddress)}
+																title="Click to copy full address"
+															>
+																{truncateWalletAddress(winner.walletAddress, 6, 6)}
+																{#if Icon}
+																	<Icon icon="mdi:content-copy" class="w-3 h-3 inline ml-1" />
+																{/if}
+															</button>
+														</div>
+													</div>
+													<div class="text-right">
+														<p class="font-bold text-green-600 text-sm">
+															{(calculatedDistribution.winners.amount / pendingWinners.count).toFixed(3)} SOL
+														</p>
+														<p class="text-xs text-gray-500">Draw #{winner.drawNumber}</p>
+													</div>
+												</div>
+											{/each}
+										{/each}
+									</div>
+								</div>
+							{/if}
+						</div>
+
+						<!-- Right Column: Wallets & Summary -->
+						<div class="space-y-4">
+							<!-- Holding Wallet Payment -->
+							<div class="border rounded-lg overflow-hidden">
+								<div class="bg-blue-50 px-4 py-2 border-b border-blue-200">
+									<div class="flex items-center gap-2">
+										{#if Icon}
+											<Icon icon="mdi:bank" class="w-4 h-4 text-blue-600" />
+										{/if}
+										<h4 class="font-medium text-blue-900 text-sm">Holding Wallet</h4>
+										<span class="text-xs text-blue-700">
+											{calculatedDistribution.holding.amount.toFixed(3)} SOL
+										</span>
+									</div>
+								</div>
+								<div class="p-3">
+									<div class="flex items-center justify-between">
+										<div>
+											<p class="font-medium text-gray-900 text-sm">{walletAddresses.holdingWalletName}</p>
+											<button 
+												class="text-xs text-gray-500 hover:text-gray-700 font-mono cursor-pointer"
+												on:click={() => copyToClipboard(walletAddresses.holdingWallet)}
+												title="Click to copy full address"
+											>
+												{truncateWalletAddress(walletAddresses.holdingWallet, 6, 6)}
+												{#if Icon}
+													<Icon icon="mdi:content-copy" class="w-3 h-3 inline ml-1" />
+												{/if}
+											</button>
+										</div>
+										<p class="font-bold text-blue-600 text-sm">{calculatedDistribution.holding.amount.toFixed(3)} SOL</p>
+									</div>
+								</div>
+							</div>
+
+							<!-- Charity Wallet Payment -->
+							<div class="border rounded-lg overflow-hidden">
+								<div class="bg-purple-50 px-4 py-2 border-b border-purple-200">
+									<div class="flex items-center gap-2">
+										{#if Icon}
+											<Icon icon="mdi:heart" class="w-4 h-4 text-purple-600" />
+										{/if}
+										<h4 class="font-medium text-purple-900 text-sm">Charity Wallet</h4>
+										<span class="text-xs text-purple-700">
+											{calculatedDistribution.charity.amount.toFixed(3)} SOL
+										</span>
+									</div>
+								</div>
+								<div class="p-3">
+									<div class="flex items-center justify-between">
+										<div>
+											<p class="font-medium text-gray-900 text-sm">{walletAddresses.charityWalletName}</p>
+											<button 
+												class="text-xs text-gray-500 hover:text-gray-700 font-mono cursor-pointer"
+												on:click={() => copyToClipboard(walletAddresses.charityWallet)}
+												title="Click to copy full address"
+											>
+												{truncateWalletAddress(walletAddresses.charityWallet, 6, 6)}
+												{#if Icon}
+													<Icon icon="mdi:content-copy" class="w-3 h-3 inline ml-1" />
+												{/if}
+											</button>
+										</div>
+										<p class="font-bold text-purple-600 text-sm">{calculatedDistribution.charity.amount.toFixed(3)} SOL</p>
+									</div>
+								</div>
+							</div>
+
+							<!-- Total Verification -->
+							<div class="bg-gray-50 rounded-lg p-3 border">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-2">
+										{#if Icon}
+											<Icon icon="mdi:calculator" class="w-4 h-4 text-gray-600" />
+										{/if}
+										<p class="font-medium text-gray-900 text-sm">Total Distribution</p>
+									</div>
+									<div class="text-right">
+										<p class="font-bold text-gray-900 text-sm">{calculatedDistribution.total.toFixed(3)} SOL</p>
+										<p class="text-xs text-gray-500">
+											{pendingWinners?.count || 0} recipients + 2 wallets
+										</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<!-- Warning -->
+				<div class="bg-red-50 rounded-lg p-4 border border-red-200">
+					<div class="flex items-start gap-3">
+						{#if Icon}
+							<Icon icon="mdi:alert-circle" class="w-5 h-5 text-red-600 mt-0.5" />
+						{/if}
+						<div>
+							<p class="font-medium text-red-900">Important Notice</p>
+							<p class="text-sm text-red-700 mt-1">
+								This action cannot be undone. All pending winners will be marked as paid and SOL will be distributed according to the allocation above.
+							</p>
+						</div>
+					</div>
+				</div>
+
+				{#if error}
+					<div class="bg-red-50 rounded-lg p-4 border border-red-200">
+						<p class="text-sm text-red-700">{error}</p>
+					</div>
+				{/if}
+			</div>
+		{/if}
+
+		<DialogFooter>
+			<Button 
+				variant="outline" 
+				on:click={() => showDistributionDialog = false}
+				disabled={executingDistribution}
+			>
+				Cancel
+			</Button>
+			<Button 
+				on:click={executeDistribution}
+				disabled={executingDistribution || !calculatedDistribution}
+				class="bg-orange-600 hover:bg-orange-700"
+			>
+				{#if executingDistribution}
+					{#if Icon}
+						<Icon icon="mdi:loading" class="w-4 h-4 mr-2 animate-spin" />
+					{/if}
+					Executing...
+				{:else}
+					{#if Icon}
+						<Icon icon="mdi:send" class="w-4 h-4 mr-2" />
+					{/if}
+					Execute Distribution
+				{/if}
+			</Button>
+		</DialogFooter>
+	</DialogContent>
+</Dialog>
+
+<style>
+	:global(.wide-dialog) {
+		max-width: none !important;
+		width: 90vw !important;
+		max-width: 1200px !important;
+	}
+</style>

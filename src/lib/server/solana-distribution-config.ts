@@ -2,9 +2,9 @@
 import { TEST_WALLETS, isTestMode } from '../config/test-wallets';
 
 export const DISTRIBUTION_WALLETS = {
-  // Production wallet addresses (to be configured)
-  HOLDING_WALLET: 'PLACEHOLDER_HOLDING_WALLET_ADDRESS', // 40% of distribution
-  CHARITY_WALLET: 'PLACEHOLDER_CHARITY_WALLET_ADDRESS'  // 10% of distribution
+  // Production wallet addresses from environment variables
+  HOLDING_WALLET: 'EgFrJidrBi89nXA8qbBnZ1PMWUPRunX8bA7CWJFhbdEt', // 40% of distribution
+  CHARITY_WALLET: '3ebPj68nRbKQwpRUoHRdZypxKb6b5SHL5vYmAuqf9Bo8'  // 10% of distribution
 };
 
 // Get distribution wallets based on current mode (test vs production)

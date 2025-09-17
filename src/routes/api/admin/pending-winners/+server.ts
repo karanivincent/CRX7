@@ -50,7 +50,41 @@ export const GET: RequestHandler = async () => {
       return sum + Number(winner.prizeAmount);
     }, 0);
 
-    // Group by draw for better organization
+    // Group by draw with enhanced structure
+    const drawGroups = formattedWinners.reduce((acc, winner) => {
+      const drawNumber = winner.drawNumber;
+      if (!acc[drawNumber]) {
+        acc[drawNumber] = {
+          drawNumber,
+          drawId: winner.drawId,
+          completedAt: winner.drawCompletedAt,
+          winners: [],
+          count: 0,
+          totalAmount: 0
+        };
+      }
+      acc[drawNumber].winners.push(winner);
+      acc[drawNumber].count++;
+      acc[drawNumber].totalAmount += Number(winner.prizeAmount);
+      return acc;
+    }, {} as Record<number, {
+      drawNumber: number;
+      drawId: string;
+      completedAt: string;
+      winners: typeof formattedWinners;
+      count: number;
+      totalAmount: number;
+    }>);
+
+    // Convert to array and sort by draw number (newest first)
+    const sortedDrawGroups = Object.values(drawGroups)
+      .sort((a, b) => b.drawNumber - a.drawNumber)
+      .map(group => ({
+        ...group,
+        totalAmountFormatted: `${group.totalAmount.toFixed(3)} SOL`
+      }));
+
+    // Legacy format for backward compatibility
     const winnersByDraw = formattedWinners.reduce((acc, winner) => {
       const drawKey = `Draw ${winner.drawNumber}`;
       if (!acc[drawKey]) {
@@ -64,7 +98,8 @@ export const GET: RequestHandler = async () => {
       success: true,
       data: {
         pendingWinners: formattedWinners,
-        winnersByDraw,
+        winnersByDraw, // Legacy format
+        drawGroups: sortedDrawGroups, // New enhanced format
         totalPending,
         totalPendingFormatted: `${totalPending.toFixed(3)} SOL`,
         count: formattedWinners.length

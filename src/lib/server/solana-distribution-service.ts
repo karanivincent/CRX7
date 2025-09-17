@@ -42,7 +42,7 @@ export async function executeDistribution(
 
     // Get pending winners from database
     const { data: pendingWinners, error: winnersError } = await supabase
-      .from('winners')
+      .from('winner')
       .select('*')
       .is('transaction_hash', null)
       .order('won_at');
@@ -97,7 +97,7 @@ export async function executeDistribution(
     // Update winners with simulated transaction hashes
     for (const winner of pendingWinners) {
       const { error: updateError } = await supabase
-        .from('winners')
+        .from('winner')
         .update({
           transaction_hash: simulatedTransactions.winnersTransactionHash,
           paid_at: new Date().toISOString()
@@ -149,7 +149,7 @@ export async function executeDistribution(
 export async function getPendingWinnersSummary() {
   try {
     const { data: pendingWinners, error } = await supabase
-      .from('winners')
+      .from('winner')
       .select('*')
       .is('transaction_hash', null);
 
