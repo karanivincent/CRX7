@@ -245,7 +245,7 @@
 		const totalAmount = pendingWinners?.totalPendingFormatted || '0 SOL';
 		
 		if (winnerCount === 0) {
-			alert('No pending winners to clear');
+			showInfo('No pending winners to clear');
 			return;
 		}
 		

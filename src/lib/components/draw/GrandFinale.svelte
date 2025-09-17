@@ -3,6 +3,8 @@
   import { Button } from '$lib/components/ui/button';
   import Icon from '@iconify/svelte';
   import { drawActions } from '$lib/stores/draw-state-old';
+  import { showSuccess } from '$lib/stores/toast';
+  import ToastContainer from '$lib/components/ui/toast-container.svelte';
   
   export let round: any;
   export let winners: Array<{
@@ -47,7 +49,7 @@
       });
     } else {
       navigator.clipboard.writeText(text);
-      alert('Results copied to clipboard!');
+      showSuccess('Results copied to clipboard!');
     }
   }
   
@@ -60,6 +62,9 @@
     };
   }
 </script>
+
+<!-- Toast Container -->
+<ToastContainer />
 
 <div class="relative flex flex-col items-center justify-center min-h-[800px] bg-gradient-to-br from-yellow-50 via-orange-50 to-red-50 rounded-xl border-4 border-yellow-300 p-8 overflow-hidden">
   

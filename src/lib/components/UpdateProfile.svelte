@@ -5,10 +5,15 @@
 	import * as Card from '$lib/components/ui/card/index';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Label from '$lib/components/ui/label/label.svelte';
+	import ToastContainer from '$lib/components/ui/toast-container.svelte';
+	import { showSuccess, showError } from '$lib/stores/toast';
 
 	export let userProfile;
 	export let avatar;
 </script>
+
+<!-- Toast Container -->
+<ToastContainer />
 
 <Card.Root class="mx-auto max-w-md">
 	<Card.Header>
@@ -31,9 +36,9 @@
 				return ({ result }) => {
 					if (result.type === 'success') {
 						invalidate('/');
-						alert('UPDATED!');
+						showSuccess('Profile updated successfully!');
 					} else {
-						alert('ERROR!');
+						showError('Failed to update profile');
 					}
 				};
 			}}
