@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock environment variables for token config
 vi.mock('$env/static/private', () => ({
 	TOKEN_MINT_ADDRESS: 'FyB8VxxYAaVVchAgbB1kvjWdw26ovaD4ipwV1j8epump',
-	TOKEN_NAME: '$runner',
-	TOKEN_SYMBOL: 'RUNNER',
+	TOKEN_NAME: '$crx7',
+	TOKEN_SYMBOL: 'CRX7',
 	TOKEN_DECIMALS: '6',
 	ADMIN_WALLET_ADDRESS: 'AdminWalletAddress123456789',
 	HOLDING_WALLET_ADDRESS: 'HoldingWalletAddress123456789',
@@ -34,15 +34,15 @@ describe('Token Configuration', () => {
 		});
 
 		it('should have correct token name', () => {
-			expect(getTokenConfig.name).toBe('$runner');
+			expect(getTokenConfig.name).toBe('$crx7');
 		});
 
 		it('should have correct token symbol', () => {
-			expect(getTokenConfig.symbol).toBe('RUNNER');
+			expect(getTokenConfig.symbol).toBe('CRX7');
 		});
 
 		it('should have correct display name format', () => {
-			expect(getTokenConfig.displayName).toBe('$RUNNER');
+			expect(getTokenConfig.displayName).toBe('$CRX7');
 		});
 
 		it('should be consistent object', () => {
@@ -84,7 +84,7 @@ describe('Token Configuration', () => {
 				getTokenConfig.symbol,
 				getTokenConfig.displayName
 			];
-			
+
 			basicValues.forEach(value => {
 				expect(value).not.toBeUndefined();
 				expect(value).not.toBeNull();

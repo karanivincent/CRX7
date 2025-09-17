@@ -39,6 +39,7 @@ pnpm run consolidate:dry   # dry run consolidation
 CRX7 (Creator Reward x 7) is a Solana-based lottery system where token holders can win SOL rewards through weekly draws. Built with SvelteKit, Supabase, and Solana Web3.
 
 ### Core Features
+
 - **Lottery System**: 7 random token holders selected per draw
 - **SOL Distribution**: 50% winners, 40% holding, 10% charity
 - **Vault Management**: Combined Creator Vault + Coin Creator Vault ATA
@@ -46,6 +47,7 @@ CRX7 (Creator Reward x 7) is a Solana-based lottery system where token holders c
 - **Analytics**: Vercel Analytics integration
 
 ### Tech Stack
+
 - **Frontend**: SvelteKit 2.x with TypeScript
 - **Authentication**: Supabase Auth (hidden signup, 2FA support)
 - **Database**: PostgreSQL via Supabase with Drizzle ORM
@@ -54,6 +56,7 @@ CRX7 (Creator Reward x 7) is a Solana-based lottery system where token holders c
 - **Deployment**: Vercel with Node 20 runtime
 
 ### Key Directories
+
 - `src/lib/auth/` - MFA components and authentication
 - `src/lib/db/` - Database schema (draw, participant, winner, distribution_history)
 - `src/lib/components/` - UI components including draw animations
@@ -64,26 +67,31 @@ CRX7 (Creator Reward x 7) is a Solana-based lottery system where token holders c
 - `scripts/` - Utility scripts for wallet consolidation
 
 ### Database Schema
+
 Main tables managed via Drizzle ORM:
+
 - `draw` - Lottery draw scheduling and execution
-- `participant` - Token holders in each draw  
+- `participant` - Token holders in each draw
 - `winner` - Selected winners and prize amounts
 - `distribution_history` - SOL distribution tracking
 
 ### Authentication & Security
+
 - **Hidden Signup**: Access via `/auth/login?signup=true`
 - **2FA Implementation**: TOTP-based MFA with Supabase
 - **Admin Access**: Direct URL only (`/auth/login`), no nav links
 - **Unauthenticated Redirects**: Admin routes redirect to home `/`
 
 ### Solana Integration
-- **Token**: Configurable via environment (was $RUNNER, now CRX7)
+
+- **Token**: Configurable via environment
 - **Vaults**: Creator Vault + Coin Creator Vault ATA (combined balance)
 - **RPC**: Helius API for blockchain queries
 - **Distribution**: Automated SOL transfers to winners/wallets
 - **Holder Detection**: Fetches token holders > 0 balance
 
 ### Environment Variables Required
+
 ```
 # Supabase
 DATABASE_URL
@@ -112,6 +120,7 @@ COIN_CREATOR_VAULT_ATA
 ```
 
 ### Production Launch
+
 1. Backup database before cleanup
 2. Run `production-cleanup.sql` to clear test data
 3. Verify with `production-verification.sql`
@@ -119,9 +128,11 @@ COIN_CREATOR_VAULT_ATA
 5. Deploy to Vercel
 
 ### Testing Mode
+
 Developer panel and testing features can be toggled via `/admin/configuration`. Testing mode uses separate distribution wallets for safety.
 
 ### Important Routes
+
 - `/` - Public homepage
 - `/past-draws` - Draw history
 - `/winners` - Winner listings

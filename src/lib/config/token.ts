@@ -1,12 +1,12 @@
-import { 
-	TOKEN_MINT_ADDRESS, 
-	TOKEN_NAME, 
-	TOKEN_SYMBOL,
+import {
 	ADMIN_WALLET_ADDRESS,
-	HOLDING_WALLET_ADDRESS,
 	CHARITY_WALLET_ADDRESS,
+	COIN_CREATOR_VAULT_ATA,
 	CREATOR_VAULT,
-	COIN_CREATOR_VAULT_ATA
+	HOLDING_WALLET_ADDRESS,
+	TOKEN_MINT_ADDRESS,
+	TOKEN_NAME,
+	TOKEN_SYMBOL
 } from '$env/static/private';
 
 export interface TokenConfig {
@@ -14,26 +14,26 @@ export interface TokenConfig {
 	mintAddress: string;
 	name: string;
 	symbol: string;
-	displayName: string; // For UI display (e.g., "$RUNNER")
-	
+	displayName: string; // For UI display (e.g., "$CRX7")
+
 	// Wallet Configuration
 	adminWallet: string;
 	holdingWallet: string;
 	charityWallet: string;
 	creatorVault: string;
 	coinCreatorVaultAta: string;
-	
+
 	// Distribution Settings
 	distribution: {
 		winnersPercentage: number;
 		holdingPercentage: number;
 		charityPercentage: number;
 	};
-	
+
 	// Lottery Settings
 	winnersPerDraw: number;
 	drawFrequency: string;
-	
+
 	// Jupiter Swap URL
 	jupiterSwapUrl: string;
 }
@@ -43,26 +43,26 @@ export const tokenConfig: TokenConfig = {
 	mintAddress: TOKEN_MINT_ADDRESS,
 	name: TOKEN_NAME,
 	symbol: TOKEN_SYMBOL,
-	displayName: `$${TOKEN_SYMBOL}`, // Creates $RUNNER or $CRx7 dynamically
-	
+	displayName: `$${TOKEN_SYMBOL}`, // Creates $CRX7 or $CRx7 dynamically
+
 	// Wallet Configuration
 	adminWallet: ADMIN_WALLET_ADDRESS,
 	holdingWallet: HOLDING_WALLET_ADDRESS,
 	charityWallet: CHARITY_WALLET_ADDRESS,
 	creatorVault: CREATOR_VAULT,
 	coinCreatorVaultAta: COIN_CREATOR_VAULT_ATA,
-	
+
 	// Distribution Settings
 	distribution: {
 		winnersPercentage: 50,
 		holdingPercentage: 40,
 		charityPercentage: 10
 	},
-	
+
 	// Lottery Settings
 	winnersPerDraw: 7,
 	drawFrequency: 'weekly',
-	
+
 	// Jupiter Swap URL - dynamically constructed
 	jupiterSwapUrl: `https://jup.ag/swap/SOL-${TOKEN_MINT_ADDRESS}`
 };

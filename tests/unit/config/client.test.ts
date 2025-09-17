@@ -1,11 +1,11 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Import functions and types after mocking
-const { 
-	getTokenDisplay, 
-	getTokenName, 
-	getTokenSymbol, 
-	defaultClientConfig 
+const {
+	getTokenDisplay,
+	getTokenName,
+	getTokenSymbol,
+	defaultClientConfig
 } = await import('../../../src/lib/config/client.js');
 
 describe('Client Configuration', () => {
@@ -16,7 +16,7 @@ describe('Client Configuration', () => {
 	describe('getTokenDisplay', () => {
 		it('should return the default display name', () => {
 			const display = getTokenDisplay();
-			expect(display).toBe('$RUNNER');
+			expect(display).toBe('$CRX7');
 		});
 
 		it('should be consistent across multiple calls', () => {
@@ -29,14 +29,14 @@ describe('Client Configuration', () => {
 	describe('getTokenName', () => {
 		it('should return the token name', () => {
 			const name = getTokenName();
-			expect(name).toBe('$runner');
+			expect(name).toBe('$crx7');
 		});
 	});
 
 	describe('getTokenSymbol', () => {
 		it('should return the token symbol', () => {
 			const symbol = getTokenSymbol();
-			expect(symbol).toBe('RUNNER');
+			expect(symbol).toBe('CRX7');
 		});
 	});
 
@@ -63,9 +63,9 @@ describe('Client Configuration', () => {
 			const name = getTokenName();
 			const symbol = getTokenSymbol();
 
-			expect(display).toBe('$RUNNER');
-			expect(name).toBe('$runner');
-			expect(symbol).toBe('RUNNER');
+			expect(display).toBe('$CRX7');
+			expect(name).toBe('$crx7');
+			expect(symbol).toBe('CRX7');
 			expect(typeof symbol).toBe('string');
 			expect(symbol.length).toBeGreaterThan(0);
 		});

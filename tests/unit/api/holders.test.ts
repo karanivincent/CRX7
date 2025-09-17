@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock all dependencies before importing the handler
 vi.mock('@solana/web3.js', () => ({
@@ -12,8 +12,8 @@ vi.mock('@solana/spl-token', () => ({
 
 vi.mock('$env/static/private', () => ({
 	TOKEN_MINT_ADDRESS: 'FyB8VxxYAaVVchAgbB1kvjWdw26ovaD4ipwV1j8epump',
-	TOKEN_NAME: '$runner',
-	TOKEN_SYMBOL: 'RUNNER',
+	TOKEN_NAME: '$crx7',
+	TOKEN_SYMBOL: 'CRX7',
 	HELIUS_API_KEY: 'test-helius-api-key'
 }));
 
@@ -27,15 +27,15 @@ describe('Token Holders API', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Mock Connection instance
 		mockConnection = {
 			getProgramAccounts: vi.fn()
 		};
-		
+
 		// Make Connection constructor return our mock
 		(Connection as any).mockImplementation(() => mockConnection);
-		
+
 		// Create minimal mock event object
 		mockEvent = {
 			request: new Request('http://localhost/api/holders')
@@ -54,8 +54,8 @@ describe('Token Holders API', () => {
 		expect(data.holders).toEqual([]);
 		expect(data.totalHolders).toBe(0);
 		expect(data.tokenMint).toBe('FyB8VxxYAaVVchAgbB1kvjWdw26ovaD4ipwV1j8epump');
-		expect(data.tokenName).toBe('$runner');
-		expect(data.tokenSymbol).toBe('RUNNER');
+		expect(data.tokenName).toBe('$crx7');
+		expect(data.tokenSymbol).toBe('CRX7');
 		expect(data.message).toContain('Fetched 0 real token holders from blockchain');
 	});
 
