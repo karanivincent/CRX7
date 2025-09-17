@@ -47,7 +47,7 @@ export const actions = {
 			redirect(303, '/auth/mfa-challenge');
 		}
 
-		redirect(303, '/');
+		redirect(303, '/admin');
 	},
 
 	signup: async ({ request, locals: { supabase }, url }) => {
