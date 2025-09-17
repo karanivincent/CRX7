@@ -9,6 +9,7 @@ const CONFIG_FILE = join(process.cwd(), '.testing-mode.json');
 interface TestingConfig {
   testingMode: boolean;
   useTestDistributionWallets: boolean;
+  showDeveloperPanel: boolean;
   lastModified: string;
 }
 
@@ -26,6 +27,7 @@ function loadTestingConfig(): TestingConfig {
   return {
     testingMode: process.env.NODE_ENV === 'development',
     useTestDistributionWallets: false,
+    showDeveloperPanel: false,
     lastModified: new Date().toISOString()
   };
 }
@@ -54,6 +56,7 @@ export const GET: RequestHandler = async () => {
       success: true,
       testingMode: config.testingMode,
       useTestDistributionWallets: config.useTestDistributionWallets,
+      showDeveloperPanel: config.showDeveloperPanel,
       lastModified: config.lastModified
     });
   } catch (error) {
@@ -68,12 +71,14 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async ({ request }) => {
   try {
     const body = await request.json();
-    const { testingMode, useTestDistributionWallets } = body;
+    const { testingMode, useTestDistributionWallets, showDeveloperPanel } = body;
     
     // Validate input
-    if (typeof testingMode !== 'boolean' || typeof useTestDistributionWallets !== 'boolean') {
+    if (typeof testingMode !== 'boolean' || 
+        typeof useTestDistributionWallets !== 'boolean' ||
+        typeof showDeveloperPanel !== 'boolean') {
       return json({
-        error: 'Invalid input: testingMode and useTestDistributionWallets must be boolean values'
+        error: 'Invalid input: testingMode, useTestDistributionWallets, and showDeveloperPanel must be boolean values'
       }, { status: 400 });
     }
     
@@ -81,6 +86,7 @@ export const POST: RequestHandler = async ({ request }) => {
     const config = loadTestingConfig();
     config.testingMode = testingMode;
     config.useTestDistributionWallets = useTestDistributionWallets;
+    config.showDeveloperPanel = showDeveloperPanel;
     
     // Save the updated configuration
     saveTestingConfig(config);
@@ -90,6 +96,7 @@ export const POST: RequestHandler = async ({ request }) => {
       message: 'Testing mode configuration updated successfully',
       testingMode: config.testingMode,
       useTestDistributionWallets: config.useTestDistributionWallets,
+      showDeveloperPanel: config.showDeveloperPanel,
       lastModified: config.lastModified
     });
     

@@ -34,6 +34,9 @@
 	let testingMode = false;
 	let useTestDistributionWallets = false;
 	
+	// Developer panel visibility
+	let showDeveloperPanel = false;
+	
 	// Save status
 	let saving = false;
 	let lastSaved = '';
@@ -42,12 +45,14 @@
 	import { onMount } from 'svelte';
 	
 	onMount(async () => {
+		// Load testing mode configuration
 		try {
 			const response = await fetch('/api/admin/testing-mode');
 			if (response.ok) {
 				const result = await response.json();
 				testingMode = result.testingMode || false;
 				useTestDistributionWallets = result.useTestDistributionWallets || false;
+				showDeveloperPanel = result.showDeveloperPanel || false;
 			}
 		} catch (error) {
 			console.error('Failed to load testing mode status:', error);
@@ -63,7 +68,8 @@
 				},
 				body: JSON.stringify({
 					testingMode,
-					useTestDistributionWallets
+					useTestDistributionWallets,
+					showDeveloperPanel
 				})
 			});
 			
@@ -95,6 +101,11 @@
 		return address.length >= 32 && address.length <= 44 && /^[A-Za-z0-9]+$/.test(address);
 	}
 	
+	async function toggleDeveloperPanel() {
+		showDeveloperPanel = !showDeveloperPanel;
+		await toggleTestingMode(); // Save the state
+	}
+	
 	$: isValidConfig = validateWalletAddress(holdingWallet) && 
 		validateWalletAddress(charityWallet) && 
 		validateWalletAddress(adminWallet) &&
@@ -108,6 +119,7 @@
 </svelte:head>
 
 <AdminLayout title="Configuration" description="Configure wallets, draw parameters, and system settings" {user}>
+
 
 	<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 		<!-- Wallet Configuration -->
@@ -317,6 +329,7 @@
 		</Card>
 		
 		<!-- Testing Mode Configuration -->
+		{#if showDeveloperPanel}
 		<Card class="border-2 border-yellow-200 lg:col-span-2">
 			<CardHeader>
 				<CardTitle class="flex items-center gap-2">
@@ -427,6 +440,7 @@
 				{/if}
 			</CardContent>
 		</Card>
+		{/if}
 	</div>
 	
 	<!-- Save Configuration -->
@@ -441,7 +455,20 @@
 						<div class="text-sm text-gray-500">No changes saved yet</div>
 					{/if}
 				</div>
-				<div class="flex gap-3">
+				<div class="flex gap-3 items-center">
+					<!-- Developer Panel Toggle -->
+					<div class="flex items-center gap-2">
+						<label class="text-sm text-gray-600">Developer Panel</label>
+						<label class="relative inline-flex items-center cursor-pointer">
+							<input 
+								type="checkbox" 
+								bind:checked={showDeveloperPanel}
+								on:change={toggleDeveloperPanel}
+								class="sr-only peer"
+							/>
+							<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+						</label>
+					</div>
 					<Button variant="outline" disabled={saving}>
 						<Icon icon="mdi:refresh" class="mr-2 h-4 w-4" />
 						Reset to Defaults
