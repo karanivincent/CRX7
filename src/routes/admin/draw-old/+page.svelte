@@ -20,7 +20,7 @@
 		drawActions,
 		startAutoProgression,
 		setCurrentDrawId
-	} from '$lib/stores/draw-state';
+	} from '$lib/stores/draw-state-old';
 	
 	// Import stage components
 	import RoundOpening from '$lib/components/draw/RoundOpening.svelte';
