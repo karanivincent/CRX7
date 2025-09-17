@@ -4,6 +4,7 @@
 	import Logo from '$lib/components/ui/logo.svelte';
 	import { browser } from '$app/environment';
 	import { goto, invalidateAll } from '$app/navigation';
+	import { injectAnalytics } from '@vercel/analytics/sveltekit';
 
 	export let data;
 	
@@ -20,6 +21,9 @@
 			}
 		});
 	}
+
+	// Initialize Vercel Analytics
+	injectAnalytics();
 </script>
 
 
