@@ -14,3 +14,6 @@ scripts/consolidate-test-wallets.ts
 
 # Testing mode configuration
 .testing-mode.json
+
+# Vercel deployment cache
+.vercel/
