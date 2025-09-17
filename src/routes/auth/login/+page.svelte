@@ -4,10 +4,12 @@
 	import * as Card from '$lib/components/ui/card/index';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { page } from '$app/stores';
 
 	export let form;
 	
-	let isSignup = false;
+	// Enable signup mode via URL parameter: ?signup=true
+	$: isSignup = $page.url.searchParams.get('signup') === 'true';
 </script>
 
 <Card.Root class="mx-auto max-w-md">
@@ -83,7 +85,8 @@
 			</div>
 		</form>
 
-		<div class="text-center text-sm">
+		<!-- Hidden signup toggle - accessible only via ?signup=true URL parameter or developer tools -->
+		<!-- <div class="text-center text-sm">
 			<button
 				type="button"
 				on:click={() => (isSignup = !isSignup)}
@@ -91,6 +94,7 @@
 			>
 				{isSignup ? 'Already have an account? Login' : "Don't have an account? Sign up"}
 			</button>
-		</div>
+		</div> -->
+		
 	</Card.Content>
 </Card.Root>

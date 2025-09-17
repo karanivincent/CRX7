@@ -29,7 +29,7 @@ export const actions = {
 			});
 		}
 
-		const { error } = await supabase.auth.signInWithPassword({
+		const { data: authData, error } = await supabase.auth.signInWithPassword({
 			email: result.data.email,
 			password: result.data.password
 		});
@@ -41,10 +41,23 @@ export const actions = {
 			});
 		}
 
+		// Check if user has MFA enabled
+		if (authData.user && !authData.session) {
+			// User needs to complete MFA challenge
+			redirect(303, '/auth/mfa-challenge');
+		}
+
 		redirect(303, '/');
 	},
 
-	signup: async ({ request, locals: { supabase } }) => {
+	signup: async ({ request, locals: { supabase }, url }) => {
+		// Additional security: only allow signup if URL parameter is present
+		if (url.searchParams.get('signup') !== 'true') {
+			return fail(403, {
+				errors: { form: ['Signup is currently disabled'] }
+			});
+		}
+
 		const formData = await request.formData();
 		const email = formData.get('email') as string;
 		const password = formData.get('password') as string;
