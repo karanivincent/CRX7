@@ -6,7 +6,7 @@ export const load = async ({ locals }) => {
 	const { session, user } = await locals.safeGetSession();
 	
 	if (!user) {
-		redirect(302, '/auth/login');
+		redirect(302, '/');
 	}
 
 	// Fetch live vault balance for distribution calculations

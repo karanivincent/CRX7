@@ -6,7 +6,7 @@ export const load: PageServerLoad = async ({ locals }) => {
   const { session, user } = await locals.safeGetSession();
   
   if (!user) {
-    redirect(302, '/auth/login');
+    redirect(302, '/');
   }
 
   // For now, any logged-in user can access admin
