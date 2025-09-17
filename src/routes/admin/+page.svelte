@@ -8,10 +8,10 @@
 	import { onMount } from 'svelte';
 	
 	export let data;
-	const { user, vaultData: initialVaultData } = data;
+	const { user, vaultData: initialVaultData, clientConfig } = data;
 	
-	// Cache config values
-	const tokenDisplay = getTokenDisplay();
+	// Cache config values from server-loaded configuration
+	const tokenDisplay = clientConfig?.displayName || 'CRX7';
 	
 	// Real-time vault data
 	let vaultData = initialVaultData;
@@ -278,29 +278,32 @@
 		<CardContent>
 			{#if distributionAmount && Number(distributionAmount) > 0}
 				{@const amount = Number(distributionAmount)}
-				{@const winnersTotal = amount * 0.5}
-				{@const holdingTotal = amount * 0.4}
-				{@const charityTotal = amount * 0.1}
-				{@const perWinner = winnersTotal / 7}
+				{@const winnersPercent = (clientConfig?.distribution.winnersPercentage || 50) / 100}
+				{@const holdingPercent = (clientConfig?.distribution.holdingPercentage || 40) / 100}
+				{@const charityPercent = (clientConfig?.distribution.charityPercentage || 10) / 100}
+				{@const winnersTotal = amount * winnersPercent}
+				{@const holdingTotal = amount * holdingPercent}
+				{@const charityTotal = amount * charityPercent}
+				{@const perWinner = winnersTotal / (clientConfig?.winnersPerDraw || 7)}
 				
 				<div class="space-y-4">
 					<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-						<!-- Winners 50% -->
+						<!-- Winners -->
 						<div class="text-center p-4 bg-orange-50 rounded-lg">
 							<div class="text-lg font-bold text-orange-600">{winnersTotal.toFixed(2)} SOL</div>
-							<div class="text-sm text-gray-600">Winners (50%)</div>
-							<div class="text-xs text-gray-500">{perWinner.toFixed(3)} SOL each (7 winners)</div>
+							<div class="text-sm text-gray-600">Winners ({clientConfig?.distribution.winnersPercentage || 50}%)</div>
+							<div class="text-xs text-gray-500">{perWinner.toFixed(3)} SOL each ({clientConfig?.winnersPerDraw || 7} winners)</div>
 						</div>
-						<!-- Holding 40% -->
+						<!-- Holding -->
 						<div class="text-center p-4 bg-blue-50 rounded-lg">
 							<div class="text-lg font-bold text-blue-600">{holdingTotal.toFixed(2)} SOL</div>
-							<div class="text-sm text-gray-600">Holding (40%)</div>
+							<div class="text-sm text-gray-600">Holding ({clientConfig?.distribution.holdingPercentage || 40}%)</div>
 							<div class="text-xs text-gray-500">Future rounds</div>
 						</div>
-						<!-- Charity 10% -->
+						<!-- Charity -->
 						<div class="text-center p-4 bg-green-50 rounded-lg">
 							<div class="text-lg font-bold text-green-600">{charityTotal.toFixed(2)} SOL</div>
-							<div class="text-sm text-gray-600">Charity (10%)</div>
+							<div class="text-sm text-gray-600">Charity ({clientConfig?.distribution.charityPercentage || 10}%)</div>
 							<div class="text-xs text-gray-500">Good cause</div>
 						</div>
 					</div>

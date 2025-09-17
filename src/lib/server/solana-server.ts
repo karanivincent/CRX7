@@ -1,6 +1,7 @@
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { HELIUS_API_KEY } from '$env/static/private';
+import { getDrawConfig } from './configuration-service';
 
 // Server-side Solana connection with Helius RPC
 const SOLANA_RPC_URL = HELIUS_API_KEY 
@@ -265,9 +266,10 @@ export async function getServerVaultInfo(vaultAddress: string, useCache: boolean
 		const balance = await getServerSOLBalance(vaultAddress, useCache);
 		const distribution = calculateDistribution(balance);
 		
-		// Calculate winner amounts (7 winners by default)
+		// Calculate winner amounts using configured winners per draw
+		const drawConfig = await getDrawConfig();
 		const winnersAmount = distribution.winners.amount;
-		const perWinnerAmount = winnersAmount / 7;
+		const perWinnerAmount = winnersAmount / drawConfig.winnersPerDraw;
 		
 		return {
 			address: vaultAddress,
@@ -277,7 +279,7 @@ export async function getServerVaultInfo(vaultAddress: string, useCache: boolean
 			winnerBreakdown: {
 				total: winnersAmount,
 				perWinner: perWinnerAmount,
-				numberOfWinners: 7,
+				numberOfWinners: drawConfig.winnersPerDraw,
 				totalFormatted: formatSOLAmount(winnersAmount),
 				perWinnerFormatted: formatSOLAmount(perWinnerAmount, 3)
 			},
@@ -310,9 +312,10 @@ export async function getCombinedVaultInfo(creatorVault: string, coinCreatorVaul
 		const combinedBalance = creatorBalance + coinCreatorBalance;
 		const distribution = calculateDistribution(combinedBalance);
 		
-		// Calculate winner amounts (7 winners by default)
+		// Calculate winner amounts using configured winners per draw
+		const drawConfig = await getDrawConfig();
 		const winnersAmount = distribution.winners.amount;
-		const perWinnerAmount = winnersAmount / 7;
+		const perWinnerAmount = winnersAmount / drawConfig.winnersPerDraw;
 		
 		return {
 			// Combined vault information
@@ -338,7 +341,7 @@ export async function getCombinedVaultInfo(creatorVault: string, coinCreatorVaul
 			winnerBreakdown: {
 				total: winnersAmount,
 				perWinner: perWinnerAmount,
-				numberOfWinners: 7,
+				numberOfWinners: drawConfig.winnersPerDraw,
 				totalFormatted: formatSOLAmount(winnersAmount),
 				perWinnerFormatted: formatSOLAmount(perWinnerAmount, 3)
 			},

@@ -14,11 +14,11 @@ export interface ClientTokenConfig {
 	};
 }
 
-// Default configuration - will be populated by server
+// Default configuration - fallback values
 export const defaultClientConfig: ClientTokenConfig = {
-	displayName: '$RUNNER', 
-	name: '$runner',
-	symbol: 'RUNNER',
+	displayName: 'CRX7', 
+	name: 'Creator Reward X7',
+	symbol: 'CRX7',
 	winnersPerDraw: 7,
 	drawFrequency: 'weekly',
 	distribution: {

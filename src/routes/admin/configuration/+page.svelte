@@ -10,11 +10,13 @@
 	
 	const tokenDisplay = getTokenDisplay();
 	
-	// Configuration settings
-	let minimumBalance = 10000; // Minimum token balance for eligibility
-	let holdingWallet = 'EgFrJidrBi89nXA8qbBnZ1PMWUPRunX8bA7CWJFhbdEt';
-	let charityWallet = '3ebPj68nRbKQwpRUoHRdZypxKb6b5SHL5vYmAuqf9Bo8';
-	let adminWallet = '3mkD7ShsqbjpFcu1VWnCcoM6mTAt272qemLK4xBqKQJx';
+	// Configuration settings - will be loaded from database
+	let minimumBalance = 10000;
+	let holdingWallet = '';
+	let charityWallet = '';
+	let adminWallet = '';
+	let creatorVault = '';
+	let coinCreatorVaultAta = '';
 	
 	// Draw parameters
 	let winnersPerDraw = 7;
@@ -26,9 +28,14 @@
 	};
 	
 	// Token settings
-	let tokenMintAddress = 'FyB8VxxYAaVVchAgbB1kvjWdw26ovaD4ipwV1j8epump';
-	let tokenName = '$runner';
-	let tokenSymbol = 'RUNNER';
+	let tokenMintAddress = '';
+	let tokenName = '';
+	let tokenSymbol = '';
+	
+	// Loading state
+	let loading = true;
+	let saveError = '';
+	let saveSuccess = false;
 	
 	// Testing mode settings
 	let testingMode = false;
@@ -45,17 +52,48 @@
 	import { onMount } from 'svelte';
 	
 	onMount(async () => {
-		// Load testing mode configuration
+		// Load configuration from database
 		try {
-			const response = await fetch('/api/admin/testing-mode');
-			if (response.ok) {
-				const result = await response.json();
+			loading = true;
+			
+			// Load main configuration
+			const configResponse = await fetch('/api/admin/configuration');
+			if (configResponse.ok) {
+				const { config } = await configResponse.json();
+				
+				// Update local state with database values
+				if (config.holding_wallet_address) holdingWallet = config.holding_wallet_address;
+				if (config.charity_wallet_address) charityWallet = config.charity_wallet_address;
+				if (config.admin_wallet_address) adminWallet = config.admin_wallet_address;
+				if (config.creator_vault) creatorVault = config.creator_vault;
+				if (config.coin_creator_vault_ata) coinCreatorVaultAta = config.coin_creator_vault_ata;
+				
+				if (config.winners_per_draw !== undefined) winnersPerDraw = config.winners_per_draw;
+				if (config.candidates_per_spin !== undefined) candidatesPerSpin = config.candidates_per_spin;
+				if (config.minimum_token_balance !== undefined) minimumBalance = config.minimum_token_balance;
+				
+				if (config.distribution_winners_percent !== undefined) distributionSplit.winners = config.distribution_winners_percent;
+				if (config.distribution_holding_percent !== undefined) distributionSplit.holding = config.distribution_holding_percent;
+				if (config.distribution_charity_percent !== undefined) distributionSplit.charity = config.distribution_charity_percent;
+				
+				if (config.token_mint_address) tokenMintAddress = config.token_mint_address;
+				if (config.token_name) tokenName = config.token_name;
+				if (config.token_symbol) tokenSymbol = config.token_symbol;
+			}
+			
+			// Load testing mode configuration
+			const testResponse = await fetch('/api/admin/testing-mode');
+			if (testResponse.ok) {
+				const result = await testResponse.json();
 				testingMode = result.testingMode || false;
 				useTestDistributionWallets = result.useTestDistributionWallets || false;
 				showDeveloperPanel = result.showDeveloperPanel || false;
 			}
 		} catch (error) {
-			console.error('Failed to load testing mode status:', error);
+			console.error('Failed to load configuration:', error);
+			saveError = 'Failed to load configuration';
+		} finally {
+			loading = false;
 		}
 	});
 	
@@ -88,12 +126,56 @@
 	
 	async function saveConfiguration() {
 		saving = true;
+		saveError = '';
+		saveSuccess = false;
 		
-		// Simulate API call
-		await new Promise(resolve => setTimeout(resolve, 1000));
-		
-		saving = false;
-		lastSaved = new Date().toLocaleString();
+		try {
+			const updates = {
+				holding_wallet_address: holdingWallet,
+				charity_wallet_address: charityWallet,
+				admin_wallet_address: adminWallet,
+				creator_vault: creatorVault,
+				coin_creator_vault_ata: coinCreatorVaultAta,
+				winners_per_draw: winnersPerDraw,
+				candidates_per_spin: candidatesPerSpin,
+				minimum_token_balance: minimumBalance,
+				distribution_winners_percent: distributionSplit.winners,
+				distribution_holding_percent: distributionSplit.holding,
+				distribution_charity_percent: distributionSplit.charity,
+				token_mint_address: tokenMintAddress,
+				token_name: tokenName,
+				token_symbol: tokenSymbol
+			};
+			
+			const response = await fetch('/api/admin/configuration', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({ updates })
+			});
+			
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(error.error || 'Failed to save configuration');
+			}
+			
+			const result = await response.json();
+			lastSaved = new Date().toLocaleString();
+			saveSuccess = true;
+			
+			// Clear success message after 3 seconds
+			setTimeout(() => {
+				saveSuccess = false;
+			}, 3000);
+			
+			console.log('Configuration saved:', result);
+		} catch (error) {
+			console.error('Failed to save configuration:', error);
+			saveError = error.message || 'Failed to save configuration';
+		} finally {
+			saving = false;
+		}
 	}
 	
 	function validateWalletAddress(address: string) {
@@ -128,12 +210,16 @@
 		}
 	}
 	
+	
 	$: isValidConfig = validateWalletAddress(holdingWallet) && 
 		validateWalletAddress(charityWallet) && 
 		validateWalletAddress(adminWallet) &&
+		validateWalletAddress(creatorVault) &&
+		validateWalletAddress(coinCreatorVaultAta) &&
 		minimumBalance > 0 &&
 		winnersPerDraw > 0 &&
-		candidatesPerSpin > 0;
+		candidatesPerSpin > 0 &&
+		(distributionSplit.winners + distributionSplit.holding + distributionSplit.charity) === 100;
 </script>
 
 <svelte:head>
@@ -185,6 +271,28 @@
 						class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-mono text-sm"
 					/>
 					<div class="text-xs text-gray-500">Receives 10% of each distribution for charity</div>
+				</div>
+				
+				<div class="space-y-2">
+					<label class="text-sm font-medium text-gray-700">Creator Vault</label>
+					<input 
+						type="text" 
+						bind:value={creatorVault}
+						placeholder="Token creator vault address"
+						class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-mono text-sm"
+					/>
+					<div class="text-xs text-gray-500">Token creator vault for transaction management</div>
+				</div>
+				
+				<div class="space-y-2">
+					<label class="text-sm font-medium text-gray-700">Creator Vault ATA</label>
+					<input 
+						type="text" 
+						bind:value={coinCreatorVaultAta}
+						placeholder="Associated token account address"
+						class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 font-mono text-sm"
+					/>
+					<div class="text-xs text-gray-500">Associated token account for creator vault</div>
 				</div>
 			</CardContent>
 		</Card>
@@ -511,6 +619,30 @@
 				</div>
 			</div>
 			
+			{#if saveSuccess}
+				<div class="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+					<div class="flex items-start gap-2">
+						<Icon icon="mdi:check-circle" class="w-4 h-4 text-green-600 mt-0.5" />
+						<div class="text-sm text-green-800">
+							<div class="font-medium">Configuration saved successfully!</div>
+							<div class="mt-1">All changes have been applied to the database.</div>
+						</div>
+					</div>
+				</div>
+			{/if}
+			
+			{#if saveError}
+				<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+					<div class="flex items-start gap-2">
+						<Icon icon="mdi:alert-circle" class="w-4 h-4 text-red-600 mt-0.5" />
+						<div class="text-sm text-red-800">
+							<div class="font-medium">Failed to save configuration</div>
+							<div class="mt-1">{saveError}</div>
+						</div>
+					</div>
+				</div>
+			{/if}
+			
 			{#if !isValidConfig}
 				<div class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
 					<div class="flex items-start gap-2">
@@ -526,6 +658,12 @@
 								{/if}
 								{#if !validateWalletAddress(adminWallet)}
 									<li>Invalid admin wallet address</li>
+								{/if}
+								{#if !validateWalletAddress(creatorVault)}
+									<li>Invalid creator vault address</li>
+								{/if}
+								{#if !validateWalletAddress(coinCreatorVaultAta)}
+									<li>Invalid creator vault ATA address</li>
 								{/if}
 								{#if minimumBalance <= 0}
 									<li>Minimum balance must be greater than 0</li>

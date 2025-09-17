@@ -7,6 +7,18 @@ export const profileTable = pgTable("profile", {
   email: text("email").notNull(),
 });
 
+export const configurationTable = pgTable("configuration", {
+  id: uuid("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  type: text("type").notNull(), // 'string', 'number', 'boolean', 'json'
+  category: text("category").notNull(), // 'wallet', 'draw', 'distribution', 'token'
+  description: text("description"),
+  isSensitive: boolean("is_sensitive").default(false),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  updatedBy: text("updated_by"),
+});
+
 export const drawTable = pgTable("draw", {
   id: uuid("id").primaryKey(),
   drawNumber: integer("draw_number").notNull().unique(),
