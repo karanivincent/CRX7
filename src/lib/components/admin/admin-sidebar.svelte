@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Card } from '$lib/components/ui/card';
 	import { Button } from '$lib/components/ui/button';
+	import Logo from '$lib/components/ui/logo.svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
 	import { getTokenDisplay } from '$lib/config/client';
@@ -68,13 +69,7 @@
 	<!-- Header -->
 	<div class="p-6 border-b border-orange-100">
 		<div class="flex items-center gap-3">
-			<div class="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-				{#if Icon}
-					<Icon icon="mdi:dice-6" class="w-6 h-6 text-white" />
-				{:else}
-					<div class="w-6 h-6 bg-white/20 rounded"></div>
-				{/if}
-			</div>
+			<Logo size="md" showText={false} className="flex-shrink-0" />
 			<div>
 				<h1 class="font-bold text-gray-900">{tokenDisplay}</h1>
 				<p class="text-sm text-orange-600">Admin Panel</p>

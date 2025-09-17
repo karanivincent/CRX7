@@ -1,6 +1,7 @@
 <script>
 	import '../app.css';
 	import { Button } from '$lib/components/ui/button';
+	import Logo from '$lib/components/ui/logo.svelte';
 	import { browser } from '$app/environment';
 	import { goto, invalidateAll } from '$app/navigation';
 
@@ -32,7 +33,9 @@
 	<div class="flex min-h-screen flex-col">
 		<nav class="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
 			<div class="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4">
-				<a href="/" class="text-xl font-bold text-gray-900">CRx7</a>
+				<a href="/" class="flex items-center">
+					<Logo size="xl" showText={false} />
+				</a>
 
 				<div class="flex items-center gap-4">
 					<a href="/leaderboard" class="text-sm font-medium text-gray-700 hover:text-orange-600 transition-colors">
@@ -63,7 +66,8 @@
 
 		<footer class="bg-gray-50 border-t">
 			<div class="mx-auto max-w-7xl px-6 py-8">
-				<div class="flex items-center justify-center">
+				<div class="flex items-center justify-center gap-3">
+					<Logo size="sm" showText={false} />
 					<p class="text-sm text-gray-600">© 2024 CRx7. All rights reserved.</p>
 				</div>
 			</div>
