@@ -59,12 +59,12 @@
 								2
 							</div>
 						</div>
-						<CardTitle class="text-xl">Weekly Draws 🎰</CardTitle>
+						<CardTitle class="text-xl">Daily & Weekly Draws 🎰</CardTitle>
 					</CardHeader>
 					<CardContent class="text-center">
 						<p class="text-gray-600">
-							Every week, 7 random {tokenDisplay} holders are selected 
-							to win SOL rewards automatically!
+							Daily draws at 3 PM UTC and weekly mega draws on Sundays at 8 PM UTC. 
+							Random {tokenDisplay} holders are selected to win SOL rewards automatically!
 						</p>
 					</CardContent>
 				</Card>
@@ -104,7 +104,7 @@
 						<div class="flex items-start gap-3">
 							<Icon icon="mdi:clock" class="h-5 w-5 text-blue-500 mt-1" />
 							<div>
-								<div class="font-semibold">Weekly Draws</div>
+								<div class="font-semibold">Daily & Weekly Draws</div>
 								<div class="text-sm text-gray-600">{lotteryDescription}</div>
 							</div>
 						</div>
@@ -151,7 +151,7 @@
 							<span class="text-green-600 font-bold">50%</span>
 						</div>
 						<div class="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-							<span class="font-semibold text-blue-800">🔄 Future Rounds</span>
+							<span class="font-semibold text-blue-800">👥 Team</span>
 							<span class="text-blue-600 font-bold">40%</span>
 						</div>
 						<div class="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
@@ -176,7 +176,7 @@
 					</div>
 					<div>
 						<div class="font-semibold mb-2">Q: When are draws held?</div>
-						<div class="text-sm text-gray-600">A: Every week at a randomly selected time to ensure fairness.</div>
+						<div class="text-sm text-gray-600">A: Daily draws at 3 PM UTC and weekly mega draws on Sundays at 8 PM UTC.</div>
 					</div>
 					<div>
 						<div class="font-semibold mb-2">Q: How do I claim winnings?</div>
