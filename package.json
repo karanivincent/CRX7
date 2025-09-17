@@ -18,7 +18,7 @@
 		"consolidate:dry": "tsx scripts/consolidate-test-wallets.ts --dry-run"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^3.0.0",
+		"@sveltejs/adapter-vercel": "^5.10.2",
 		"@sveltejs/kit": "^2.0.0",
 		"@sveltejs/vite-plugin-svelte": "^3.1.2",
 		"@testing-library/svelte": "^5.2.8",
@@ -46,6 +46,9 @@
 		"vitest": "^3.2.4"
 	},
 	"type": "module",
+	"engines": {
+		"node": ">=18.0.0 <21.0.0"
+	},
 	"dependencies": {
 		"@iconify/svelte": "^4.0.2",
 		"@solana/spl-token": "^0.4.14",
