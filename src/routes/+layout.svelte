@@ -13,7 +13,12 @@
 	if (browser) {
 		// Set up auth state change listener only in browser
 		supabase.auth.onAuthStateChange(async (_, newSession) => {
-			if (!newSession) {
+			// Don't redirect to home if already on auth pages
+			const currentPath = window.location.pathname;
+			const isAuthPage = currentPath.startsWith('/auth/');
+			
+			if (!newSession && !isAuthPage) {
+				// Only redirect to home if not on an auth page
 				goto('/');
 			}
 			if (newSession?.expires_at !== session?.expires_at) {
