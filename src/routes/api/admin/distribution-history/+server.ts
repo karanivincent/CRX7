@@ -151,6 +151,8 @@ export const POST: RequestHandler = async ({ request }) => {
 export const PATCH: RequestHandler = async ({ request, url }) => {
   try {
     const distributionId = url.searchParams.get('id');
+    const transactionType = url.searchParams.get('type'); // Optional specific transaction type
+    
     if (!distributionId) {
       return json({ error: 'Distribution ID is required' }, { status: 400 });
     }
@@ -179,6 +181,21 @@ export const PATCH: RequestHandler = async ({ request, url }) => {
       return json({ error: 'No failed transactions to retry' }, { status: 400 });
     }
 
+    // If specific transaction type is provided, validate it exists in failed list
+    let transactionsToRetry = failedTransactions;
+    if (transactionType) {
+      const validTypes = ['winners', 'holding', 'charity'];
+      if (!validTypes.includes(transactionType)) {
+        return json({ error: 'Invalid transaction type. Must be: winners, holding, or charity' }, { status: 400 });
+      }
+      
+      if (!failedTransactions.includes(transactionType)) {
+        return json({ error: `Transaction type '${transactionType}' did not fail or was already completed` }, { status: 400 });
+      }
+      
+      transactionsToRetry = [transactionType];
+    }
+
     // Update retry count and status
     const retryCount = (distribution.retry_count || 0) + 1;
     if (retryCount > 3) {
@@ -203,14 +220,17 @@ export const PATCH: RequestHandler = async ({ request, url }) => {
     const { retryFailedDistribution } = await import('$lib/server/solana-retry-service');
     
     // Execute retry asynchronously (don't wait for completion)
-    retryFailedDistribution(distributionId, failedTransactions).catch(error => {
+    retryFailedDistribution(distributionId, transactionsToRetry).catch(error => {
       console.error(`Failed to retry distribution ${distributionId}:`, error);
     });
 
     return json({
       success: true,
-      message: 'Retry initiated',
-      retryCount
+      message: transactionType 
+        ? `Retry initiated for ${transactionType} transaction`
+        : 'Retry initiated for all failed transactions',
+      retryCount,
+      transactionType
     });
 
   } catch (error) {

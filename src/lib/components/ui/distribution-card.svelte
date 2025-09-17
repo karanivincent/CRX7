@@ -103,6 +103,45 @@
       dispatch('retryError', { error: error instanceof Error ? error.message : 'Unknown error' });
     }
   }
+
+  async function retrySpecificTransaction(transactionType: string) {
+    try {
+      dispatch('retryStarted');
+      
+      const response = await fetch(`/api/admin/distribution-history?id=${record.id}&type=${transactionType}`, {
+        method: 'PATCH'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        dispatch('retryInitiated', { 
+          id: record.id, 
+          retryCount: result.retryCount, 
+          transactionType 
+        });
+      } else {
+        throw new Error(result.error || 'Retry failed');
+      }
+    } catch (error) {
+      console.error(`Failed to retry ${transactionType} transaction:`, error);
+      dispatch('retryError', { error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  }
+
+  function getTransactionStatus(type: 'winners' | 'holding' | 'charity') {
+    const hashField = `${type}TransactionHash` as keyof typeof record;
+    const hasTransaction = record[hashField];
+    const isFailed = record.failedTransactions && record.failedTransactions.includes(type);
+    
+    if (hasTransaction) {
+      return { status: 'success', hash: record[hashField] as string };
+    } else if (isFailed) {
+      return { status: 'failed', hash: null };
+    } else {
+      return { status: 'not_attempted', hash: null };
+    }
+  }
   
   $: statusInfo = getStatusInfo(record.status);
   $: hasTransactions = record.winners_transaction_hash || record.holding_transaction_hash || record.charity_transaction_hash;
@@ -150,8 +189,205 @@
             {/if}
           </div>
           
-          <!-- Failure Information -->
-          {#if hasFailures}
+          <!-- Detailed Transaction Status for Partial Success/Failed -->
+          {#if (record.status === 'partial_success' || record.status === 'failed') && expanded}
+            <div class="mt-4 space-y-3">
+              <h5 class="text-sm font-medium text-gray-900">Individual Transaction Status</h5>
+              
+              <!-- Winners Transaction Status -->
+              {#each [getTransactionStatus('winners')] as winnersStatus}
+              <div class="flex items-center justify-between p-3 rounded-lg border {winnersStatus.status === 'success' ? 'bg-green-50 border-green-200' : winnersStatus.status === 'failed' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}">
+                <div class="flex items-center gap-3">
+                  {#if Icon}
+                    <Icon icon={winnersStatus.status === 'success' ? 'mdi:trophy' : winnersStatus.status === 'failed' ? 'mdi:alert-circle' : 'mdi:minus-circle'} 
+                          class="w-4 h-4 {winnersStatus.status === 'success' ? 'text-green-600' : winnersStatus.status === 'failed' ? 'text-red-600' : 'text-gray-600'}" />
+                  {/if}
+                  <div>
+                    <div class="font-medium text-sm {winnersStatus.status === 'success' ? 'text-green-900' : winnersStatus.status === 'failed' ? 'text-red-900' : 'text-gray-900'}">
+                      Winners Payment
+                      {#if winnersStatus.status === 'success'}
+                        <span class="text-green-600 text-xs ml-2">✓ Success</span>
+                      {:else if winnersStatus.status === 'failed'}
+                        <span class="text-red-600 text-xs ml-2">✗ Failed</span>
+                      {/if}
+                    </div>
+                    {#if winnersStatus.hash}
+                      <div class="text-xs font-mono {winnersStatus.status === 'success' ? 'text-green-700' : 'text-gray-600'}">
+                        {record.winnersTransactionDisplay || winnersStatus.hash.slice(0, 8) + '...' + winnersStatus.hash.slice(-8)}
+                      </div>
+                    {:else if winnersStatus.status === 'failed'}
+                      <div class="text-xs text-red-600">Transaction failed</div>
+                    {/if}
+                  </div>
+                </div>
+                <div class="flex gap-1">
+                  {#if winnersStatus.status === 'failed'}
+                    <button
+                      on:click={() => retrySpecificTransaction('winners')}
+                      class="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors text-xs font-medium px-2"
+                      title="Retry winners transaction"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:refresh" class="w-3 h-3 inline mr-1" />
+                      {/if}
+                      Retry
+                    </button>
+                  {:else if winnersStatus.hash}
+                    <button
+                      on:click={() => copyToClipboard(winnersStatus.hash)}
+                      class="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                      title="Copy transaction hash"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:content-copy" class="w-3.5 h-3.5" />
+                      {/if}
+                    </button>
+                    <button
+                      on:click={() => openSolscan(record.winnersTransactionUrl)}
+                      class="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                      title="View on Solscan"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:open-in-new" class="w-3.5 h-3.5" />
+                      {/if}
+                    </button>
+                  {/if}
+                </div>
+              </div>
+              {/each}
+
+              <!-- Holding Transaction Status -->
+              {#each [getTransactionStatus('holding')] as holdingStatus}
+              <div class="flex items-center justify-between p-3 rounded-lg border {holdingStatus.status === 'success' ? 'bg-green-50 border-green-200' : holdingStatus.status === 'failed' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}">
+                <div class="flex items-center gap-3">
+                  {#if Icon}
+                    <Icon icon={holdingStatus.status === 'success' ? 'mdi:bank' : holdingStatus.status === 'failed' ? 'mdi:alert-circle' : 'mdi:minus-circle'} 
+                          class="w-4 h-4 {holdingStatus.status === 'success' ? 'text-green-600' : holdingStatus.status === 'failed' ? 'text-red-600' : 'text-gray-600'}" />
+                  {/if}
+                  <div>
+                    <div class="font-medium text-sm {holdingStatus.status === 'success' ? 'text-green-900' : holdingStatus.status === 'failed' ? 'text-red-900' : 'text-gray-900'}">
+                      Holding Wallet
+                      {#if holdingStatus.status === 'success'}
+                        <span class="text-green-600 text-xs ml-2">✓ Success</span>
+                      {:else if holdingStatus.status === 'failed'}
+                        <span class="text-red-600 text-xs ml-2">✗ Failed</span>
+                      {/if}
+                    </div>
+                    {#if holdingStatus.hash}
+                      <div class="text-xs font-mono {holdingStatus.status === 'success' ? 'text-green-700' : 'text-gray-600'}">
+                        {record.holdingTransactionDisplay || holdingStatus.hash.slice(0, 8) + '...' + holdingStatus.hash.slice(-8)}
+                      </div>
+                    {:else if holdingStatus.status === 'failed'}
+                      <div class="text-xs text-red-600">Transaction failed</div>
+                    {/if}
+                  </div>
+                </div>
+                <div class="flex gap-1">
+                  {#if holdingStatus.status === 'failed'}
+                    <button
+                      on:click={() => retrySpecificTransaction('holding')}
+                      class="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors text-xs font-medium px-2"
+                      title="Retry holding transaction"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:refresh" class="w-3 h-3 inline mr-1" />
+                      {/if}
+                      Retry
+                    </button>
+                  {:else if holdingStatus.hash}
+                    <button
+                      on:click={() => copyToClipboard(holdingStatus.hash)}
+                      class="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                      title="Copy transaction hash"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:content-copy" class="w-3.5 h-3.5" />
+                      {/if}
+                    </button>
+                    <button
+                      on:click={() => openSolscan(record.holdingTransactionUrl)}
+                      class="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                      title="View on Solscan"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:open-in-new" class="w-3.5 h-3.5" />
+                      {/if}
+                    </button>
+                  {/if}
+                </div>
+              </div>
+              {/each}
+
+              <!-- Charity Transaction Status -->
+              {#each [getTransactionStatus('charity')] as charityStatus}
+              <div class="flex items-center justify-between p-3 rounded-lg border {charityStatus.status === 'success' ? 'bg-green-50 border-green-200' : charityStatus.status === 'failed' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'}">
+                <div class="flex items-center gap-3">
+                  {#if Icon}
+                    <Icon icon={charityStatus.status === 'success' ? 'mdi:heart' : charityStatus.status === 'failed' ? 'mdi:alert-circle' : 'mdi:minus-circle'} 
+                          class="w-4 h-4 {charityStatus.status === 'success' ? 'text-green-600' : charityStatus.status === 'failed' ? 'text-red-600' : 'text-gray-600'}" />
+                  {/if}
+                  <div>
+                    <div class="font-medium text-sm {charityStatus.status === 'success' ? 'text-green-900' : charityStatus.status === 'failed' ? 'text-red-900' : 'text-gray-900'}">
+                      Charity Wallet
+                      {#if charityStatus.status === 'success'}
+                        <span class="text-green-600 text-xs ml-2">✓ Success</span>
+                      {:else if charityStatus.status === 'failed'}
+                        <span class="text-red-600 text-xs ml-2">✗ Failed</span>
+                      {/if}
+                    </div>
+                    {#if charityStatus.hash}
+                      <div class="text-xs font-mono {charityStatus.status === 'success' ? 'text-green-700' : 'text-gray-600'}">
+                        {record.charityTransactionDisplay || charityStatus.hash.slice(0, 8) + '...' + charityStatus.hash.slice(-8)}
+                      </div>
+                    {:else if charityStatus.status === 'failed'}
+                      <div class="text-xs text-red-600">Transaction failed</div>
+                    {/if}
+                  </div>
+                </div>
+                <div class="flex gap-1">
+                  {#if charityStatus.status === 'failed'}
+                    <button
+                      on:click={() => retrySpecificTransaction('charity')}
+                      class="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors text-xs font-medium px-2"
+                      title="Retry charity transaction"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:refresh" class="w-3 h-3 inline mr-1" />
+                      {/if}
+                      Retry
+                    </button>
+                  {:else if charityStatus.hash}
+                    <button
+                      on:click={() => copyToClipboard(charityStatus.hash)}
+                      class="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                      title="Copy transaction hash"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:content-copy" class="w-3.5 h-3.5" />
+                      {/if}
+                    </button>
+                    <button
+                      on:click={() => openSolscan(record.charityTransactionUrl)}
+                      class="p-1.5 text-green-600 hover:bg-green-100 rounded transition-colors"
+                      title="View on Solscan"
+                    >
+                      {#if Icon}
+                        <Icon icon="mdi:open-in-new" class="w-3.5 h-3.5" />
+                      {/if}
+                    </button>
+                  {/if}
+                </div>
+              </div>
+              {/each}
+
+              {#if record.failureReason}
+                <div class="text-xs text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                  <strong>Error Details:</strong> {record.failureReason}
+                </div>
+              {/if}
+            </div>
+          {:else if hasFailures && !expanded}
+            <!-- Condensed failure info when not expanded -->
             <div class="mt-2 text-sm">
               <div class="text-red-600 font-medium">Failed: {record.failedTransactions.join(', ')}</div>
               {#if record.failureReason}
