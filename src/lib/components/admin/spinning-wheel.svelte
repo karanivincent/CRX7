@@ -16,10 +16,12 @@
 	
 	let wheelElement: HTMLElement;
 	let rotation = 0;
-	let spinDuration = 4000; // 4 seconds for dramatic effect
+	let spinDuration = 10000; // 10 seconds for ultra dramatic effect
 	let isAccelerating = false;
 	let showSparkles = false;
 	let celebrationMode = false;
+	let isDramaticSlowdown = false; // New state for final dramatic slowdown
+	let isRecoiling = false; // New state for recoil effect
 	
 	// Enhanced colors for wheel segments - more vibrant
 	const segmentColors = [
@@ -77,32 +79,81 @@
 		isAccelerating = true;
 		showSparkles = true;
 		celebrationMode = false;
+		isDramaticSlowdown = false;
+		isRecoiling = false;
 		
-		// Generate random rotation (multiple full spins + random position)
-		const spins = 6 + Math.random() * 4; // 6-10 full rotations for more drama
-		const finalRotation = spins * 360 + Math.random() * 360;
-		rotation = finalRotation;
+		// Generate random rotation (more spins for more drama)
+		const spins = 10 + Math.random() * 3; // 10-13 full rotations for maximum drama
+		const baseRotation = spins * 360 + Math.random() * 360;
+		// Slightly overshoot for the recoil effect
+		const overshoot = 5 + Math.random() * 10; // 5-15 degrees overshoot
+		rotation = baseRotation + overshoot;
 		
-		// Enhanced animation with dramatic easing
+		// Enhanced animation with EXTREME slowdown at the end
 		if (wheelElement) {
 			wheelElement.style.transform = `rotate(${rotation}deg)`;
-			wheelElement.style.transition = `transform ${spinDuration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+			// Custom cubic bezier for EXTREME slowdown - almost stops at the end
+			wheelElement.style.transition = `transform ${spinDuration}ms cubic-bezier(0.15, 0.85, 0.95, 0.995)`;
 			
-			// Add pulsing effect during acceleration
-			wheelElement.style.filter = 'drop-shadow(0 0 20px rgba(255, 107, 53, 0.8))';
+			// Add intense pulsing effect during acceleration
+			wheelElement.style.filter = 'drop-shadow(0 0 30px rgba(255, 107, 53, 0.9)) brightness(1.1)';
 		}
 		
-		// Turn off acceleration effect halfway through
+		// Phase 1: Acceleration phase (first 2 seconds)
 		setTimeout(() => {
 			isAccelerating = false;
+			if (wheelElement) {
+				wheelElement.style.filter = 'drop-shadow(0 0 15px rgba(255, 200, 0, 0.6))';
+			}
+		}, 2000);
+		
+		// Phase 2: Steady spin (2-7 seconds)
+		setTimeout(() => {
 			showSparkles = false;
 			if (wheelElement) {
-				wheelElement.style.filter = 'none';
+				wheelElement.style.filter = 'drop-shadow(0 0 10px rgba(255, 200, 0, 0.4))';
 			}
-		}, spinDuration / 2);
+		}, 7000);
 		
-		// Determine winner after spin completes
+		// Phase 3: Dramatic slowdown (7-9.5 seconds)
 		setTimeout(() => {
+			isDramaticSlowdown = true;
+			if (wheelElement) {
+				// Add dramatic pulsing shadow during final slowdown
+				wheelElement.style.filter = 'drop-shadow(0 0 35px rgba(255, 200, 0, 0.9)) brightness(1.08)';
+			}
+		}, spinDuration - 3000);
+		
+		// Phase 4: Recoil effect (at 9.5 seconds - bounce back slightly)
+		setTimeout(() => {
+			isRecoiling = true;
+			isDramaticSlowdown = false;
+			
+			// Apply recoil - bounce back slightly
+			const recoilRotation = baseRotation - 2; // Bounce back 2 degrees
+			if (wheelElement) {
+				wheelElement.style.transform = `rotate(${recoilRotation}deg)`;
+				wheelElement.style.transition = 'transform 500ms cubic-bezier(0.68, -0.55, 0.265, 1.55)'; // Elastic bounce
+				wheelElement.style.filter = 'drop-shadow(0 0 40px rgba(255, 100, 0, 1)) brightness(1.1)';
+			}
+			rotation = recoilRotation;
+			
+			// Small forward correction after recoil
+			setTimeout(() => {
+				const finalRotation = baseRotation;
+				if (wheelElement) {
+					wheelElement.style.transform = `rotate(${finalRotation}deg)`;
+					wheelElement.style.transition = 'transform 300ms ease-out';
+					wheelElement.style.filter = 'drop-shadow(0 0 20px rgba(255, 200, 0, 0.7))';
+				}
+				rotation = finalRotation;
+			}, 500);
+		}, spinDuration - 500);
+		
+		// Determine winner after spin completes (after recoil settles)
+		setTimeout(() => {
+			isDramaticSlowdown = false;
+			isRecoiling = false;
 			const segmentAngle = 360 / candidates.length;
 			
 			// Calculate which segment is at the top (12 o'clock position)
@@ -119,21 +170,21 @@
 			// Start celebration mode
 			celebrationMode = true;
 			
-			// Add winner highlight effect
+			// Add winner highlight effect with dramatic green glow
 			if (wheelElement) {
-				wheelElement.style.filter = 'drop-shadow(0 0 30px rgba(34, 197, 94, 0.8)) brightness(1.1)';
+				wheelElement.style.filter = 'drop-shadow(0 0 40px rgba(34, 197, 94, 0.9)) brightness(1.15)';
 				setTimeout(() => {
 					if (wheelElement) {
-						wheelElement.style.filter = 'none';
+						wheelElement.style.filter = 'drop-shadow(0 0 20px rgba(34, 197, 94, 0.5))';
 					}
-				}, 2000);
+				}, 3000);
 			}
 			
 			winner = selectedWinner;
 			winnerAnimal = selectedAnimal;
 			isSpinning = false;
 			onSpinComplete(selectedWinner, selectedAnimal);
-		}, spinDuration + 500); // Add slight delay for dramatic effect
+		}, spinDuration + 800); // Slightly after recoil completes
 	}
 	
 	onMount(() => {
@@ -183,27 +234,56 @@
 	{/if}
 	
 	<!-- Wheel Container -->
-	<div class="relative {isAccelerating ? 'scale-105 transition-transform duration-1000' : ''}">
-		<!-- Large Fixed Pointer at 12 o'clock (always visible, more prominent when winner selected) -->
-		<div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-4 z-30">
-			<!-- Large winning pointer triangle -->
-			<div class="w-0 h-0 
-						border-l-[{pointerSizes[size].width}px] border-r-[{pointerSizes[size].width}px] border-b-[{pointerSizes[size].height}px]
-						border-l-transparent border-r-transparent 
-						{winner && !isSpinning ? 'border-b-yellow-400 animate-pulse' : 'border-b-orange-600'} 
-						drop-shadow-lg">
-			</div>
-			<!-- Pointer base circle -->
-			<div class="absolute left-1/2 transform -translate-x-1/2 
-						w-{pointerSizes[size].circle} h-{pointerSizes[size].circle} rounded-full border-4 drop-shadow-lg
-						{winner && !isSpinning ? 'bg-yellow-400 border-yellow-500 animate-pulse' : 'bg-orange-600 border-orange-700'}"
-						style="top: {pointerSizes[size].height - 15}px;">
+	<div class="relative">
+		<!-- Large Fixed Pointer Arrow at 12 o'clock (always visible, more prominent when winner selected) -->
+		<div class="absolute -top-4 left-1/2 transform -translate-x-1/2 z-30 
+			 {isDramaticSlowdown ? 'animate-bounce' : isRecoiling ? 'scale-125' : ''}
+			 transition-transform duration-300">
+			
+			<!-- Main Arrow Container with glow effect -->
+			<div class="relative">
+				<!-- Glow effect behind arrow -->
+				{#if isSpinning || winner}
+					<div class="absolute inset-0 blur-md opacity-50">
+						<svg width="60" height="80" viewBox="0 0 60 80">
+							<path d="M 30 75 L 10 35 L 20 35 L 20 5 L 40 5 L 40 35 L 50 35 Z" 
+								  fill={winner && !isSpinning ? '#facc15' : isDramaticSlowdown ? '#fbbf24' : '#ef4444'} />
+						</svg>
+					</div>
+				{/if}
+				
+				<!-- Main Arrow -->
+				<svg width="60" height="80" viewBox="0 0 60 80" class="relative">
+					<!-- Arrow shadow -->
+					<path d="M 31 76 L 11 36 L 21 36 L 21 6 L 41 6 L 41 36 L 51 36 Z" 
+						  fill="rgba(0,0,0,0.3)" />
+					
+					<!-- Arrow body -->
+					<path d="M 30 75 L 10 35 L 20 35 L 20 5 L 40 5 L 40 35 L 50 35 Z" 
+						  fill={winner && !isSpinning ? '#facc15' : isDramaticSlowdown ? '#f59e0b' : isRecoiling ? '#dc2626' : '#ef4444'}
+						  stroke={winner && !isSpinning ? '#f59e0b' : '#991b1b'}
+						  stroke-width="2"
+						  class="{winner && !isSpinning ? 'animate-pulse' : ''}" />
+					
+					<!-- Arrow highlight -->
+					<path d="M 30 70 L 15 40 L 22 40 L 22 10 L 30 10 L 30 40 Z" 
+						  fill="rgba(255,255,255,0.3)" />
+				</svg>
+				
+				<!-- Winner indicator text -->
+				{#if winner && !isSpinning}
+					<div class="absolute -bottom-8 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
+						<span class="text-sm font-bold text-yellow-500 bg-white px-2 py-1 rounded shadow-lg animate-pulse">
+							WINNER!
+						</span>
+					</div>
+				{/if}
 			</div>
 		</div>
 		
 		<!-- Spinning Wheel -->
 		<div class="relative {sizeClasses[size]} rounded-full overflow-hidden shadow-2xl border-8 
-			{isSpinning ? 'border-yellow-400 animate-pulse' : celebrationMode ? 'border-green-400' : 'border-orange-300'} 
+			{isDramaticSlowdown ? 'border-yellow-500 animate-pulse' : isSpinning ? 'border-yellow-400' : celebrationMode ? 'border-green-400' : 'border-orange-300'} 
 			transition-all duration-300">
 			<svg 
 				bind:this={wheelElement}
@@ -273,9 +353,19 @@
 			</div>
 		{:else if isSpinning}
 			<div class="flex flex-col items-center gap-4 text-orange-600">
-				<Icon icon="mdi:loading" class="w-8 h-8 animate-spin" />
-				<span class="font-bold text-xl">🎲 Spinning the Wheel...</span>
-				<div class="text-sm text-gray-600">Finding our lucky winner!</div>
+				{#if isRecoiling}
+					<Icon icon="mdi:target" class="w-10 h-10 text-red-600 animate-bounce" />
+					<span class="font-bold text-2xl text-red-600 animate-bounce">🎯 LOCKED IN! 🎯</span>
+					<div class="text-sm text-gray-700 font-semibold">Winner detected!</div>
+				{:else if isDramaticSlowdown}
+					<Icon icon="mdi:timer-sand" class="w-8 h-8 animate-pulse text-yellow-500" />
+					<span class="font-bold text-2xl text-yellow-600 animate-pulse">⚡ ALMOST THERE... ⚡</span>
+					<div class="text-sm text-gray-600 animate-pulse">The wheel is crawling to a stop...</div>
+				{:else}
+					<Icon icon="mdi:loading" class="w-8 h-8 animate-spin" />
+					<span class="font-bold text-xl">🎲 Spinning the Wheel...</span>
+					<div class="text-sm text-gray-600">Finding our lucky winner!</div>
+				{/if}
 			</div>
 		{:else}
 			<button
@@ -322,9 +412,9 @@
 </div>
 
 <style>
-	/* Enhanced spinning animation */
+	/* Enhanced spinning animation with ULTRA extreme slowdown */
 	svg {
-		transition-timing-function: cubic-bezier(0.17, 0.67, 0.12, 0.99);
+		transition-timing-function: cubic-bezier(0.15, 0.85, 0.95, 0.995);
 	}
 	
 	/* Wheel glow effect */
@@ -335,5 +425,45 @@
 	/* Text shadow for better readability */
 	text {
 		filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.8));
+	}
+	
+	/* Dramatic glow animation for final slowdown - no size change */
+	@keyframes dramaticGlow {
+		0%, 100% { opacity: 1; filter: brightness(1); }
+		50% { opacity: 0.95; filter: brightness(1.1); }
+	}
+	
+	/* Recoil shake animation - subtle horizontal movement only */
+	@keyframes recoilShake {
+		0%, 100% { transform: translateX(0); }
+		25% { transform: translateX(-1px); }
+		75% { transform: translateX(1px); }
+	}
+	
+	/* Apply to wheel during dramatic slowdown - no size change */
+	:global(.dramatic-slowdown) {
+		animation: dramaticGlow 0.3s ease-in-out infinite;
+	}
+	
+	/* Apply subtle shake during recoil */
+	:global(.recoil-effect) {
+		animation: recoilShake 0.15s ease-in-out 2;
+	}
+	
+	/* Arrow wobble animation during dramatic slowdown */
+	@keyframes arrowWobble {
+		0%, 100% { transform: rotate(0deg); }
+		25% { transform: rotate(-5deg); }
+		75% { transform: rotate(5deg); }
+	}
+	
+	/* Arrow glow pulsing */
+	@keyframes arrowGlow {
+		0%, 100% { 
+			filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.8)); 
+		}
+		50% { 
+			filter: drop-shadow(0 0 20px rgba(239, 68, 68, 1)) drop-shadow(0 0 30px rgba(245, 158, 11, 0.6)); 
+		}
 	}
 </style>
