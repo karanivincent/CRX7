@@ -2,12 +2,16 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getServerSOLBalance } from '$lib/server/solana-server';
 import { getDistributionConfig } from '$lib/config/client';
-import { ADMIN_WALLET_ADDRESS } from '$env/static/private';
+import { getWalletConfig } from '$lib/server/configuration-service';
 import { executeDistribution } from '$lib/server/solana-distribution-service';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
-    if (!ADMIN_WALLET_ADDRESS) {
+    // Get admin wallet address from configuration service
+    const walletConfig = await getWalletConfig();
+    const adminWalletAddress = walletConfig.adminWallet;
+    
+    if (!adminWalletAddress) {
       return json({ 
         error: 'Admin wallet address not configured' 
       }, { status: 500 });
@@ -26,7 +30,7 @@ export const POST: RequestHandler = async ({ request }) => {
     const amount = Number(distributionAmount);
 
     // Get current admin wallet balance
-    const currentBalance = await getServerSOLBalance(ADMIN_WALLET_ADDRESS, false);
+    const currentBalance = await getServerSOLBalance(adminWalletAddress, false);
     const feeReserve = 0.1;
     const availableForDistribution = Math.max(0, currentBalance - feeReserve);
 
@@ -38,7 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     // Execute distribution using the distribution service
-    const result = await executeDistribution(amount, ADMIN_WALLET_ADDRESS, winnersData);
+    const result = await executeDistribution(amount, adminWalletAddress, winnersData);
 
     if (!result.success) {
       return json({

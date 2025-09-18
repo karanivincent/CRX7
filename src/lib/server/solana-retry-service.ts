@@ -48,7 +48,7 @@ export async function retryFailedDistribution(
     }
 
     // Get distribution wallets
-    const distributionWallets = getDistributionWallets();
+    const distributionWallets = await getDistributionWallets();
 
     // Prepare transaction parameters, but only for failed transactions
     const holdingAmount = failedTransactionTypes.includes('holding') ? Number(distribution.holding_amount) : 0;

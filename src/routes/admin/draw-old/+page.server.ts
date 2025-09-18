@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { getVaultInfo } from '$lib/utils/solana-balance';
-import { tokenConfig } from '$lib/config/token';
+import { getServerTokenConfig } from '$lib/config/token';
 
 export const load = async ({ locals }) => {
 	const { session, user } = await locals.safeGetSession();
@@ -14,7 +14,8 @@ export const load = async ({ locals }) => {
 	let vaultError = null;
 	
 	try {
-		const vaultInfo = await getVaultInfo(tokenConfig.rewardVault, true);
+		const tokenConfig = await getServerTokenConfig();
+		const vaultInfo = await getVaultInfo(tokenConfig.creatorVault, true);
 		vaultBalance = vaultInfo.balance;
 	} catch (error) {
 		console.error('Failed to fetch vault balance for draw page:', error);

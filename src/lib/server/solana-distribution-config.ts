@@ -1,14 +1,9 @@
 // Distribution configuration for Solana transactions
-import { TEST_WALLETS, isTestMode, useTestDistributionWallets } from '../config/test-wallets';
-
-export const DISTRIBUTION_WALLETS = {
-  // Production wallet addresses from environment variables
-  HOLDING_WALLET: 'EgFrJidrBi89nXA8qbBnZ1PMWUPRunX8bA7CWJFhbdEt', // 40% of distribution
-  CHARITY_WALLET: '3ebPj68nRbKQwpRUoHRdZypxKb6b5SHL5vYmAuqf9Bo8'  // 10% of distribution
-};
+import { TEST_WALLETS, useTestDistributionWallets } from '../config/test-wallets';
+import { getWalletConfig } from './configuration-service';
 
 // Get distribution wallets based on current mode (test vs production)
-export function getDistributionWallets() {
+export async function getDistributionWallets() {
   // Check if we should use test wallets for distribution destinations
   if (useTestDistributionWallets() && TEST_WALLETS.length >= 2) {
     console.log('🧪 Using test wallets for holding/charity distribution');
@@ -20,12 +15,14 @@ export function getDistributionWallets() {
       charityWalletName: TEST_WALLETS[1].name
     };
   }
+
+  // Use real distribution wallets from configuration service (database -> env fallback)
+  console.log('💰 Using configured holding and charity wallets from database/environment');
+  const walletConfig = await getWalletConfig();
   
-  // Use real distribution wallets (default behavior)
-  console.log('💰 Using real holding and charity wallets');
   return {
-    holdingWallet: DISTRIBUTION_WALLETS.HOLDING_WALLET,
-    charityWallet: DISTRIBUTION_WALLETS.CHARITY_WALLET,
+    holdingWallet: walletConfig.holdingWallet,
+    charityWallet: walletConfig.charityWallet,
     testMode: false,
     holdingWalletName: 'Holding Wallet',
     charityWalletName: 'Charity Wallet'
@@ -33,9 +30,9 @@ export function getDistributionWallets() {
 }
 
 // Validate that distribution wallets are configured
-export function validateDistributionWallets() {
-  const wallets = getDistributionWallets();
-  
+export async function validateDistributionWallets() {
+  const wallets = await getDistributionWallets();
+
   // In test distribution mode, always valid if we have test wallets
   if (wallets.testMode) {
     console.log('✅ Using test mode distribution wallets:', {
@@ -44,22 +41,22 @@ export function validateDistributionWallets() {
     });
     return true;
   }
-  
+
   // Real wallet validation
-  if (wallets.holdingWallet.includes('PLACEHOLDER')) {
-    console.warn('⚠️  Holding wallet is not configured (using placeholder)');
+  if (wallets.holdingWallet.includes('PLACEHOLDER') || !wallets.holdingWallet.trim()) {
+    console.warn('⚠️  Holding wallet is not configured (missing or placeholder)');
     return false;
   }
-  
-  if (wallets.charityWallet.includes('PLACEHOLDER')) {
-    console.warn('⚠️  Charity wallet is not configured (using placeholder)');
+
+  if (wallets.charityWallet.includes('PLACEHOLDER') || !wallets.charityWallet.trim()) {
+    console.warn('⚠️  Charity wallet is not configured (missing or placeholder)');
     return false;
   }
-  
+
   console.log('✅ Using real distribution wallets:', {
     holding: `${wallets.holdingWallet.slice(0, 8)}...${wallets.holdingWallet.slice(-8)}`,
     charity: `${wallets.charityWallet.slice(0, 8)}...${wallets.charityWallet.slice(-8)}`
   });
-  
+
   return true;
 }

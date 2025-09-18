@@ -8,7 +8,7 @@
 	import { Collapsible, CollapsibleTrigger } from '$lib/components/ui/collapsible';
 	import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '$lib/components/ui/dialog';
 	import { getTokenDisplay, getDistributionConfig } from '$lib/config/client';
-	import { getWalletAddresses, truncateWalletAddress } from '$lib/config/wallets';
+	import { truncateWalletAddress } from '$lib/config/wallets';
 	import AdminSidebar from '$lib/components/admin/admin-sidebar.svelte';
 	import { browser } from '$app/environment';
 	import { isTestMode } from '$lib/config/test-wallets';
@@ -24,7 +24,15 @@
 
 	const tokenDisplay = getTokenDisplay();
 	const distributionConfig = getDistributionConfig();
-	const walletAddresses = getWalletAddresses();
+	
+	// Wallet addresses from configuration service
+	let walletAddresses: any = {
+		holdingWallet: '',
+		charityWallet: '',
+		holdingWalletName: 'Loading...',
+		charityWalletName: 'Loading...',
+		testMode: false
+	};
 
 	// Balance and distribution state
 	let balanceData: any = null;
@@ -77,6 +85,29 @@
 		};
 	} else {
 		calculatedDistribution = null;
+	}
+
+	async function fetchWalletAddresses() {
+		if (!browser) return;
+		
+		try {
+			const response = await fetch('/api/admin/wallets');
+			const data = await response.json();
+			
+			if (data.success) {
+				walletAddresses = {
+					holdingWallet: data.wallets.holding,
+					charityWallet: data.wallets.charity,
+					holdingWalletName: data.meta.holdingWalletName,
+					charityWalletName: data.meta.charityWalletName,
+					testMode: data.meta.testMode
+				};
+			} else {
+				console.error('Failed to fetch wallet addresses:', data.error);
+			}
+		} catch (err) {
+			console.error('Network error fetching wallet addresses:', err);
+		}
 	}
 
 	async function fetchAdminBalance() {
@@ -291,6 +322,7 @@
 	}
 
 	onMount(() => {
+		fetchWalletAddresses();
 		fetchAdminBalance();
 		fetchPendingWinners();
 		fetchDistributionHistory();

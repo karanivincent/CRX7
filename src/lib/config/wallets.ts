@@ -1,5 +1,5 @@
 // Client-side wallet configuration for display purposes
-import { isTestMode, useTestDistributionWallets, TEST_WALLETS } from './test-wallets';
+import { TEST_WALLETS, useTestDistributionWallets } from './test-wallets';
 
 export const PRODUCTION_WALLETS = {
   HOLDING_WALLET: 'EgFrJidrBi89nXA8qbBnZ1PMWUPRunX8bA7CWJFhbdEt',
@@ -17,7 +17,7 @@ export function getWalletAddresses() {
       testMode: true
     };
   }
-  
+
   // Default: use real wallets for holding and charity
   return {
     holdingWallet: PRODUCTION_WALLETS.HOLDING_WALLET,

@@ -1,18 +1,22 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getServerSOLBalance } from '$lib/server/solana-server';
-import { ADMIN_WALLET_ADDRESS } from '$env/static/private';
+import { getWalletConfig } from '$lib/server/configuration-service';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
-    if (!ADMIN_WALLET_ADDRESS) {
+    // Get admin wallet address from configuration service
+    const walletConfig = await getWalletConfig();
+    const adminWalletAddress = walletConfig.adminWallet;
+    
+    if (!adminWalletAddress) {
       return json({ 
         error: 'Admin wallet address not configured' 
       }, { status: 500 });
     }
 
     // Get fresh balance from blockchain
-    const balance = await getServerSOLBalance(ADMIN_WALLET_ADDRESS, false);
+    const balance = await getServerSOLBalance(adminWalletAddress, false);
     
     // Calculate available for distribution (reserve 0.1 SOL for fees)
     const feeReserve = 0.1;
@@ -29,7 +33,7 @@ export const GET: RequestHandler = async ({ url }) => {
         availableFormatted: `${availableForDistribution.toFixed(3)} SOL`
       },
       meta: {
-        walletAddress: ADMIN_WALLET_ADDRESS,
+        walletAddress: adminWalletAddress,
         lastUpdated: new Date().toISOString()
       }
     });
@@ -45,14 +49,18 @@ export const GET: RequestHandler = async ({ url }) => {
 // POST to refresh balance (same as GET but explicit refresh)
 export const POST: RequestHandler = async ({ request }) => {
   try {
-    if (!ADMIN_WALLET_ADDRESS) {
+    // Get admin wallet address from configuration service
+    const walletConfig = await getWalletConfig();
+    const adminWalletAddress = walletConfig.adminWallet;
+    
+    if (!adminWalletAddress) {
       return json({ 
         error: 'Admin wallet address not configured' 
       }, { status: 500 });
     }
 
     // Force fresh balance from blockchain
-    const balance = await getServerSOLBalance(ADMIN_WALLET_ADDRESS, false);
+    const balance = await getServerSOLBalance(adminWalletAddress, false);
     
     const feeReserve = 0.1;
     const availableForDistribution = Math.max(0, balance - feeReserve);
@@ -68,7 +76,7 @@ export const POST: RequestHandler = async ({ request }) => {
         availableFormatted: `${availableForDistribution.toFixed(3)} SOL`
       },
       meta: {
-        walletAddress: ADMIN_WALLET_ADDRESS,
+        walletAddress: adminWalletAddress,
         lastUpdated: new Date().toISOString(),
         refreshed: true
       }

@@ -1,10 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getCombinedVaultInfo, getCombinedDetailedBalance, checkServerSolanaConnection } from '$lib/server/solana-server';
-import { tokenConfig } from '$lib/config/token';
+import { getServerTokenConfig } from '$lib/config/token';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
+		// Get configuration from database/environment
+		const tokenConfig = await getServerTokenConfig();
+		
 		// Check if we should bypass cache
 		const forceRefresh = url.searchParams.get('refresh') === 'true';
 		const useCache = !forceRefresh;
@@ -98,7 +101,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				error: 'Failed to fetch vault balance',
 				message: error instanceof Error ? error.message : 'Unknown error occurred',
 				vault: {
-					address: `${tokenConfig.creatorVault} + ${tokenConfig.coinCreatorVaultAta}`,
+					address: 'Unavailable',
 					balance: 0,
 					balanceFormatted: '0.00 SOL',
 					lastUpdated: new Date().toISOString(),
@@ -113,6 +116,9 @@ export const GET: RequestHandler = async ({ url }) => {
 // Optional POST endpoint to manually refresh vault balance
 export const POST: RequestHandler = async () => {
 	try {
+		// Get configuration from database/environment
+		const tokenConfig = await getServerTokenConfig();
+		
 		console.log('Manual combined vault balance refresh requested');
 		
 		// Force refresh by bypassing cache

@@ -33,10 +33,10 @@ export async function executeDistribution(
     });
 
     const distributionConfig = getDistributionConfig();
-    const distributionWallets = getDistributionWallets();
+    const distributionWallets = await getDistributionWallets();
     
     // Check if real wallets and private keys are configured
-    const walletsConfigured = validateDistributionWallets();
+    const walletsConfigured = await validateDistributionWallets();
     const privateKeyConfigured = !!ADMIN_WALLET_PRIVATE_KEY;
     const canExecuteRealTransactions = walletsConfigured && privateKeyConfigured;
     
@@ -136,7 +136,7 @@ export async function executeDistribution(
     }
 
     let transactions;
-    let failures = {};
+    let failures: { winnersFailure?: string; holdingFailure?: string; charityFailure?: string } = {};
     let isSimulation = false;
     let finalStatus = 'completed';
     let failureReason = '';
