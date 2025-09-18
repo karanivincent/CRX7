@@ -15,8 +15,8 @@ export interface CompleteRoundData {
   };
 }
 
-export async function startNewRound(prizePool: number): Promise<{ id: string; drawNumber: number }> {
-  // Get next draw number
+export async function startNewRound(prizePool: number): Promise<{ id: string; roundNumber: number }> {
+  // Get next draw number (which actually represents the round number)
   const { data: latestDraw } = await supabase
     .from('draw')
     .select('draw_number')
@@ -24,14 +24,14 @@ export async function startNewRound(prizePool: number): Promise<{ id: string; dr
     .limit(1)
     .single();
   
-  const nextDrawNumber = latestDraw ? latestDraw.draw_number + 1 : 1;
+  const nextRoundNumber = latestDraw ? latestDraw.draw_number + 1 : 1;
   
   // Create new draw record
   const { data: draw, error } = await supabase
     .from('draw')
     .insert({
       id: crypto.randomUUID(),
-      draw_number: nextDrawNumber,
+      draw_number: nextRoundNumber,
       scheduled_at: new Date().toISOString(),
       executed_at: new Date().toISOString(),
       status: 'active'
@@ -43,7 +43,7 @@ export async function startNewRound(prizePool: number): Promise<{ id: string; dr
   
   return {
     id: draw.id,
-    drawNumber: draw.draw_number
+    roundNumber: draw.draw_number
   };
 }
 
@@ -110,7 +110,7 @@ export async function completeRound(data: CompleteRoundData): Promise<void> {
   }
 }
 
-export async function getActiveRound(): Promise<{ id: string; drawNumber: number; status: string } | null> {
+export async function getActiveRound(): Promise<{ id: string; roundNumber: number; status: string } | null> {
   const { data: activeDraw, error } = await supabase
     .from('draw')
     .select('id, draw_number, status, executed_at')
@@ -122,7 +122,7 @@ export async function getActiveRound(): Promise<{ id: string; drawNumber: number
   
   return activeDraw ? {
     id: activeDraw.id,
-    drawNumber: activeDraw.draw_number,
+    roundNumber: activeDraw.draw_number,
     status: activeDraw.status
   } : null;
 }

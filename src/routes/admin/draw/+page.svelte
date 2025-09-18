@@ -141,7 +141,7 @@
 			
 			// Initialize store with new round immediately
 			console.log('🏪 Initializing store with new round...');
-			gameRoundActions.startNewRound(result.id, distributionAmount);
+			gameRoundActions.startNewRound(result.id, result.roundNumber, distributionAmount);
 			
 			// Clear loading state so UI can proceed
 			console.log('🔄 Setting loading to false');
@@ -483,7 +483,7 @@
 	{:else if currentStageValue === 'ROUND_START'}
 		<!-- Round Opening -->
 		<RoundOpening 
-			round={$gameRound}
+			round={{ drawNumber: $gameRound.roundNumber }}
 			vaultBalance={vaultTotalBalance}
 			eligibleHolders={$gameRound.eligibleHoldersCount}
 			autoProgress={false}
@@ -546,7 +546,7 @@
 	{:else if currentStageValue === 'ROUND_COMPLETE'}
 		<!-- Grand Finale -->
 		<GrandFinale 
-			round={{ drawNumber: $gameRound.roundId }}
+			round={{ drawNumber: $gameRound.roundNumber }}
 			winners={selectedWinners}
 			vaultBalance={vaultTotalBalance}
 			onProceedToDistribution={completeRoundAndPersist}

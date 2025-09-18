@@ -23,6 +23,7 @@ export interface Winner {
 export interface GameRoundState {
   // Round identification
   roundId: string | null;
+  roundNumber: number; // Human-readable round number (1, 2, 3, etc.)
   status: 'idle' | 'active' | 'completed';
   
   // Current position in round
@@ -51,6 +52,7 @@ export interface GameRoundState {
 // Default state
 const defaultState: GameRoundState = {
   roundId: null,
+  roundNumber: 0,
   status: 'idle',
   currentDraw: 1,
   stage: 'IDLE',
@@ -100,11 +102,12 @@ export const stageConfig = {
 // Store actions - replaces database-dependent actions
 export const gameRoundActions = {
   // Recovery function for existing active rounds
-  recoverActiveRound: (roundId: string, drawNumber: number = 1) => {
-    console.log(`🔄 Recovering active round ${roundId} at draw ${drawNumber}`);
+  recoverActiveRound: (roundId: string, roundNumber: number, drawNumber: number = 1) => {
+    console.log(`🔄 Recovering active round ${roundId} (Round #${roundNumber}) at draw ${drawNumber}`);
     gameRound.update(() => ({
       ...defaultState,
       roundId,
+      roundNumber,
       status: 'active',
       stage: 'ROUND_START',
       currentDraw: drawNumber,
@@ -114,10 +117,11 @@ export const gameRoundActions = {
   },
 
   // Round lifecycle
-  startNewRound: (roundId: string, prizePool: number) => {
+  startNewRound: (roundId: string, roundNumber: number, prizePool: number) => {
     gameRound.update(() => ({
       ...defaultState,
       roundId,
+      roundNumber,
       status: 'active' as const,
       stage: 'ROUND_START' as const,
       startedAt: new Date(),
